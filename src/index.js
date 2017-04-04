@@ -3,6 +3,7 @@ const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
 const auth = require('./auth')
 const articles = require('./articles')
+const profile = require('./profile.js')
 // Get the port from the environment, i.e., Heroku sets it
 const port = process.env.PORT || 3000
 
@@ -16,6 +17,8 @@ app.use(cookieParser())
 auth.setup(app)
 //gives us login, register, logout
 articles.setup(app)
+//gives us tons of other stubs (mainly profile related)
+profile.setup(app)
 
 const server = app.listen(port, () => {
      const addr = server.address()
