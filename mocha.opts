@@ -1,5 +1,3 @@
---compilers js:babel-core/register
---require jsdom-global/register
 --recursive
 --colors
 --timeout 10000
