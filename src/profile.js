@@ -29,8 +29,25 @@ const profile = {
 }
 
 //in later projects we'll be using some sort of mongo database I believe
-const databaseReplacement = {}
-databaseReplacement[user] = profile
+const databaseReplacement = {
+     //Unfortunately, there's no way to use a variable as a key here 
+     //without doing mutation
+     'cmd11test': profile,
+     'sep1': {
+          headline: 'This a fake headline for my fake Dr. Pollack entry',
+          email: 'sep1test@blah.com',
+          zipcode: 13325,
+          avatar: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4e/DWLeebron.jpg/220px-DWLeebron.jpg',
+
+     },
+     'sep2': {
+          headline: 'This is the fake headline of a fake twin of Dr. Pollack',
+          email: 'sep2test@blah.com',
+          zipcode: 13325,
+          avatar: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4e/DWLeebron.jpg/220px-DWLeebron.jpg',
+     }
+}
+
 
 /**
 These two are needed to make implementation/choice of 'database' irrelevant 
@@ -91,7 +108,7 @@ const putEmail = (req, res) => {
      if (!req.email) {
           console.log('todo! user client requested email for was invalid')
      } else {
-          setProfileField('email', req.email)
+          //stubbed atm, but later will 'setProfileField('email', req.email)'
           res.send({username: req.user, email: req.email})
      }
 }
@@ -111,18 +128,20 @@ const putZipcode = (req, res) => {
      if (!req.zipcode) {
           console.log('todo! invalid PUT for zipcode')
      } else {
-          setProfileField('zipcode', req.zipcode)
+          //stubbed atm, but later will 'setProfileField('zipcode', req.zipcode)'
           res.send({username: req.user, zipcode: req.body.zipcode}) 
      }
 }
 const avatars  = (req, res) => {
-     if (!req.email) req.email = profile.email
+     //despite being 'user' it's actually possibly a comma separated list
+     //like headline's 'users'
      if (!req.user) req.user = user
      res.send({avatars: [
-          { username: req.user, avatar: profile.avatar}
+          { username: req.user, avatar: atar}
      ]})
 }
 const putAvatar = (req, res) => {
+     //TODO - this one is a bit odd...
      if (!req.user) req.user = user
      res.send({username: req.user, avatar: req.body.avatar}) 
 }
