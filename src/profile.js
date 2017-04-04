@@ -93,8 +93,8 @@ const headlines = (req, res) => {
      if (userExists(req.users)) {
           console.log('todo - need to split up input!')
           res.send({ headlines: [ 
-               res.send({username: req.user, headline: accessField(req.users, 'headline'})
-          ]}) 
+               {username: req.user, headline: accessField(req.users, 'headline')}
+          ]})
      } else {
           console.log('todo!')
      }
@@ -106,7 +106,7 @@ const putHeadline = (req, res) => {
           console.log("TODO - implement sending back an error")
      } else {
           setProfileField(req.body.headline, 'headline')
-          res.send({username: req.user, headline: accessField(user, 'headline'})
+          res.send({username: req.user, headline: accessField(user, 'headline')})
      }     
 }
 
@@ -116,7 +116,7 @@ const email = (req, res) => {
           res.send({ 
                username: req.user,
                email: accessField(req.user, 'email')
-          }
+          })
      } else {
           console.log('todo! user client requested email for was invalid')
      }
@@ -169,7 +169,7 @@ const putAvatar = (req, res) => {
           console.log ('todo! invalid PUT for avatar') 
      } else {
           setProfileField('avatar', req.body.image)
-          res.send({username: user, avatar: accessField(user, 'avatar')) 
+          res.send({username: user, avatar: accessField(user, 'avatar')}) 
      }
 }
 

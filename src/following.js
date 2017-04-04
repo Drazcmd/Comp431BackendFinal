@@ -3,11 +3,11 @@
 const user = 'cmd11test'
 
 //eventually this will also end up being a database instead
-const following = {}
+const followingMap = {}
 //'followees' as in people the user are following, not those following the user!
-const userFollowees = set(['sep1test', 'sep2test'])
+const userFollowees = new Set(['sep1test', 'sep2test'])
 //as elsewhere, no good way to do this other than mutation :/
-following[user] = userFollowees
+followingMap[user] = userFollowees
 
 exports.setup = function(app){
      app.get('/following/:user?', following)
@@ -18,9 +18,9 @@ exports.setup = function(app){
 const following = (req, res) => {  
     //again, note that it's :users - not :user
     if (!req.user) req.user = user
-    if (req.user in following) {
-        //spread operator to convert sets back to list
-        res.send({ username: req.user, following: [...following[req.user]]})
+    if (req.user in followingMap) {
+        //spread operator to convert the set (from inside the map) back to list
+        res.send({ username: req.user, following: [...followingMap[req.user]]})
     } else {
         console.log('todo error!')
     }
@@ -48,4 +48,4 @@ const deleteFollowing = (req, res) => {
         res.send({ username: req.user, following: [...userFollowees]})
     }
 
-})
+}
