@@ -12,6 +12,8 @@ exports.setup = function(app){
 
      app.get('/avatars/:user?', avatars)
      app.put('/avatar', putAvatar)
+
+     app.get('/dob', dob)
 }
 
 //Note that according to the API, in many places I'm always using this as a 
@@ -23,7 +25,7 @@ const profile = {
      email: 'cmd11test@blah.com',
      zipcode: 12345,
      avatar: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4e/DWLeebron.jpg/220px-DWLeebron.jpg',
-     //TODO - date of birth!
+     dob: 700000000000
 }
 
 //in later projects we'll be using some sort of mongo database I believe
@@ -172,4 +174,11 @@ const putAvatar = (req, res) => {
           res.send({username: user, avatar: accessField(user, 'avatar')}) 
      }
 }
-
+const dob = (req, res) => {
+     //I think the API had a typo here. Gonna assume it should rally be like
+     //the other GET requsts, just without a corresponding PUT to update it.
+     if (!req.user) req.user = user
+     res.send(
+          { username: req.user, dob: profile.dob}
+     )
+}
