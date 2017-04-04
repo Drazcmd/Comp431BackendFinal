@@ -1,15 +1,16 @@
 exports.setup = function(app){
      app.get('/', index)
+     //note this is the only one with :users rather than :user
      app.get('/headlines/:users?', headlines)
      app.put('/headline', putHeadline)
 
-     app.get('/email/:users?', email)
+     app.get('/email/:user?', email)
      app.put('/email', putEmail)
 
-     app.get('/zipcode/:users?', zipcode)
+     app.get('/zipcode/:user?', zipcode)
      app.put('/zipcode', putZipcode)
 
-     app.get('/avatars/:users?', avatars)
+     app.get('/avatars/:user?', avatars)
      app.put('/avatar', putAvatar)
 }
 
@@ -31,17 +32,32 @@ const profile = {
 const databaseReplacement = {}
 databaseReplacement[user] = profile
 
+/**
+These two are needed to make implementation/choice of 'database' irrelevant 
+*/
 const userExists = (username) => {
-     return username in databaseReplacement
+     return (username in databaseReplacement)
+}
+const accessField = (username, fieldKey) => {
+     return userExists(username) ? databaseReplacement[username][fieldKey] : null
+}
+const setProfileField = (fieldKey, newData) => {
+     //Only valid if there's already an existing value for that fieldkey
+     const validOperation = (profile.fieldKey && newData)
+     if (validOperation){
+          profile[fieldKey] = newData
+     }
+     return validOperation
 }
 
 const headlines = (req, res) => {  
+     //again, note that it's :users - not :user
      if (!req.users) req.users = user
      console.log(req.users)
      if (userExists(req.users)) {
-          console.log('todo - need to split up input')
+          console.log('todo - need to split up input!')
           res.send({ headlines: [ 
-               { username: req.users, headline: profile.headline } 
+               res.send({username: req.user, headline: accessField(req.users, 'headline'})
           ]}) 
      } else {
           console.log('todo!')
@@ -49,53 +65,65 @@ const headlines = (req, res) => {
 }
 
 const putHeadline = (req, res) => {
-     const onlyAllowedUser = user
      if (!req.body.headline) {
           console.log("TODO - implement sending back an error")
      } else {
-          profile.headline = req.body.headline
-          res.send({username: req.users, headline: profile.headline})
+          setProfileField(req.body.headline, 'headline')
+          res.send({username: req.user, headline: accessField(user, 'headline'})
      }     
 }
 
 const email = (req, res) => {
-     if (!req.users) req.users = user
-     console.log(req.users)
-     if (userExists(req.users)) {
-          console.log('todo - need to split up input')
-          res.send({ headlines: [ 
-               { username: req.users, headline: profile.headline } 
-          ]}) 
+     if (!req.user) req.user = user
+     if (userExists(req.user)) {
+          res.send({ 
+               username: req.user,
+               email: accessField(req.user, 'email')
+          }
      } else {
-          console.log('todo!')
+          console.log('todo! user client requested email for was invalid')
      }
+
+     res.send({username: req.user, email: req.body.email}) 
 }
-     if (!req.email) req.email = profile.email
-     if (!req.users) req.users = user
-     res.send({username: req.users, email: req.email})
-}
+
 const putEmail = (req, res) => {
-     if (!req.users) req.users = user
-     res.send({username: req.users, email: req.body.email}) 
+     if (!req.email) {
+          console.log('todo! user client requested email for was invalid')
+     } else {
+          setProfileField('email', req.email)
+          res.send({username: req.user, email: req.email})
+     }
 }
 
 const zipcode = (req, res) => {
-     if (!req.body.username) req.body.username = user
-     res.send({username: req.body.username, zipcode: profile.zipcode})
+     if (!req.user) req.user = user
+     if (userExists(req.user)) {
+          res.send({
+               username: req.body.username,
+               zipcode: accessField(req.user, 'zipcode')
+          })
+     } else {
+          console.log('TODO - client requested zipcode of invalid user')
+     }
 }
 const putZipcode = (req, res) => {
-     if (!req.users) req.users = user
-     res.send({username: req.users, zipcode: req.body.zipcode}) 
+     if (!req.zipcode) {
+          console.log('todo! invalid PUT for zipcode')
+     } else {
+          setProfileField('zipcode', req.zipcode)
+          res.send({username: req.user, zipcode: req.body.zipcode}) 
+     }
 }
 const avatars  = (req, res) => {
      if (!req.email) req.email = profile.email
-     if (!req.users) req.users = user
+     if (!req.user) req.user = user
      res.send({avatars: [
-          { username: req.users, avatar: profile.avatar}
+          { username: req.user, avatar: profile.avatar}
      ]})
 }
 const putAvatar = (req, res) => {
-     if (!req.users) req.users = user
-     res.send({username: req.users, avatar: req.body.avatar}) 
+     if (!req.user) req.user = user
+     res.send({username: req.user, avatar: req.body.avatar}) 
 }
 
