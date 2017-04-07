@@ -73,7 +73,7 @@ const accessField = (username, fieldKey) => {
 */
 const setProfileField = (fieldKey, newData) => {
      //Only valid if there's already an existing value for that fieldkey
-     const validOperation = (profile.fieldKey && newData)
+     const validOperation = (profile[fieldKey] && newData)
      if (validOperation){
           profile[fieldKey] = newData
      }
