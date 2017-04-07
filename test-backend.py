@@ -126,9 +126,6 @@ print(cc.YELLOW + ('Testing stubs...') + cc.ENDC)
 for e in [ "/headlines", "/headlines/"+config['netid'], "/email", "/email/"+config['netid'], "/zipcode", "/zipcode/"+config['netid'], "/avatars", "/avatars/" + config['netid'] ]:
     msg("GET " + e)
     pp.pprint(get(e))
-for e in [ "/headline", "/email", "/zipcode", "/avatar" ]:
-    msg("PUT " + e)
-    pp.pprint(put(e))
 
 ## done
 print(cc.YELLOW + ('COMPLETE!') + cc.ENDC)
