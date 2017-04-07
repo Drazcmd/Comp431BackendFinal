@@ -22,18 +22,18 @@ const articles = [
  * that article has to be wrapped in an array accessed by key 'articles'
 */
 const postArticle = (req, res) => {
-    const newArticle = req.image 
-        ? {
-            //sadly can't use spread operator here :/
-            id: articles.length+1,
-            author:req.connection.remoteAddress,
-            text:req.body.text,
-            img:req.image
-        } : {
-            id: articles.length+1,
-            author:req.connection.remoteAddress,
-            text:req.body.text
-        }
+    const newArticle = req.image ?
+    {
+        //sadly can't use spread operator here :/
+        id: articles.length + 1,
+        author:req.connection.remoteAddress,
+        text:req.body.text,
+        img:req.image
+    } : {
+        id: articles.length+1,
+        author:req.connection.remoteAddress,
+        text:req.body.text
+    }
     articles.push(newArticle)
 
     //note that wrapping it in an array is on purpose, not a bug!
@@ -51,7 +51,7 @@ const getArticles = (req, res) => {
     res.send({
         //logical OR will work as expected assuming no author's id is equal to that
         //of an article. however, the API does not specify what to do in that case
-        articles: articles.filter(({id}) => {
+        articles: articles.filter(({id, author}) => {
             return !idOrUser || id === idOrUser || author === idOrUser
         })
     })
