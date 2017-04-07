@@ -22,13 +22,13 @@ const following = (req, res) => {
         //spread operator to convert the set (from inside the map) back to list
         res.send({ username: req.user, following: [...followingMap[req.user]]})
     } else {
-        console.log('todo error!')
+        res.sendStatus(400)
     }
 }
 
 const putFollowing = (req, res) => {
     if (!req.user) {
-        console.log("todo error")
+        res.sendStatus(400)
     } else {
         //TODO - if already following, do an error?
         userFollowees.add(req.user)
@@ -40,7 +40,7 @@ const putFollowing = (req, res) => {
 
 const deleteFollowing = (req, res) => {
     if (!req.user) {
-        console.log("todo error")
+        res.sendStatus(400)
     } else {
         //TODO - if not already following, an error?
         userFollowees.delete(req.user)

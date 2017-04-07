@@ -89,23 +89,22 @@ const index = (req, res) => {
      res.send({ hello: 'world' })
 }
 const headlines = (req, res) => {  
-     //again, note that it's :users - not :user
+     //again, note that it's :users - not :user. These are comma separated
      if (!req.users) req.users = user
-     console.log(req.users)
-     if (userExists(req.users)) {
-          console.log('todo - need to split up input!')
-          res.send({ headlines: [ 
-               {username: req.user, headline: accessField(req.users, 'headline')}
-          ]})
-     } else {
-          console.log('todo!')
-     }
+     const requestedUsers = req.users.split(',')
+     const requestedHeadlineObjs = requestedUsers.map((user) => {
+          return {
+               username: req.user,
+               headline: accessField(req.users, 'headline')
+          } 
+     })
+     res.send({ headlines: requestedHeadlineObjs})
 }
 
 const putHeadline = (req, res) => {
      //only allowed for logged in user
      if (!req.body.headline) {
-          console.log("TODO - implement sending back an error")
+        res.sendStatus(400)
      } else {
           setProfileField(req.body.headline, 'headline')
           res.send({username: req.user, headline: accessField(user, 'headline')})
@@ -120,18 +119,18 @@ const email = (req, res) => {
                email: accessField(req.user, 'email')
           })
      } else {
-          console.log('todo! user client requested email for was invalid')
+          res.sendStatus(404)
      }
 
      res.send({username: req.user, email: req.body.email}) 
 }
 
 const putEmail = (req, res) => {
-     //only allowed for logged in user
+     //(only allowed for logged in user)
      if (!req.body.email) {
-          console.log('todo! user client requested email for was invalid')
+          res.sendStatus(400)
      } else {
-          //stubbed atm, but later will 'setProfileField('email', req.email)'
+          setProfileField('email', req.email)
           res.send({username: req.user, email: req.body.email})
      }
 }
@@ -144,13 +143,13 @@ const zipcode = (req, res) => {
                zipcode: accessField(req.user, 'zipcode')
           })
      } else {
-          console.log('TODO - client requested zipcode of invalid user')
+          res.sendStatus(404)
      }
 }
 const putZipcode = (req, res) => {
      //only allowed for logged in user
      if (!req.body.zipcode) {
-          console.log('todo! invalid PUT for zipcode')
+          res.sendStatus(400)
      } else {
           setProfileField('zipcode', req.body.zipcode)
           res.send({username: req.user, zipcode: req.body.zipcode}) 
@@ -168,7 +167,7 @@ const putAvatar = (req, res) => {
      //only allowed for logged in user
      //TODO - this one is a bit odd...
      if (!req.body.image){
-          console.log ('todo! invalid PUT for avatar') 
+          res.sendStatus(400)
      } else {
           setProfileField('avatar', req.body.image)
           res.send({username: user, avatar: accessField(user, 'avatar')}) 
