@@ -1,5 +1,6 @@
 const express = require('express')
 const bodyParser = require('body-parser')
+const loggedInUser = require('./profile').user
 
 exports.setup = function(app){
     app.use(bodyParser.json())
@@ -26,7 +27,7 @@ const postArticle = (req, res) => {
     {
         //sadly can't use spread operator here :/
         id: articles.length + 1,
-        author:req.connection.remoteAddress,
+        author: loggedInUser,
         text:req.body.text,
         img:req.image
     } : {

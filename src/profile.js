@@ -19,6 +19,8 @@ exports.setup = function(app){
 //Note that according to the API, in many places I'm always using this as a 
 //backup for if user isn't defined somewhere in the request.
 const user = 'cmd11test'
+exports.loggedInUser = user 
+
 //(Note that user won't change since login is stubbed atm)
 const profile = {
      headline: 'This is my headline!',
