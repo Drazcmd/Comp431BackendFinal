@@ -38,7 +38,8 @@ const postArticle = (req, res) => {
     articles.push(newArticle)
 
     //note that wrapping it in an array is on purpose, not a bug!
-    res.send({articles: [newArticle]})
+    const returnedArticle = [newArticle]
+    res.send({articles: returnedArticle})
 }
 
 
