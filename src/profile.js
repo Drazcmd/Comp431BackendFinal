@@ -109,7 +109,7 @@ const putHeadline = (req, res) => {
         res.sendStatus(400)
      } else {
           setProfileField(req.body.headline, 'headline')
-          res.send({username: req.user, headline: accessField(user, 'headline')})
+          res.send({username: req.user, headline: profile.headline})
      }     
 }
 
