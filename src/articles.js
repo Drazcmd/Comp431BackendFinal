@@ -1,6 +1,6 @@
 const express = require('express')
 const bodyParser = require('body-parser')
-const loggedInUser = require('./profile').user
+const loggedInUser = require('./profile').loggedInUser
 
 exports.setup = function(app){
     app.use(bodyParser.json())
@@ -32,7 +32,7 @@ const postArticle = (req, res) => {
         img:req.image
     } : {
         id: articles.length+1,
-        author:req.connection.remoteAddress,
+        author:loggedInUser,
         text:req.body.text
     }
     articles.push(newArticle)
