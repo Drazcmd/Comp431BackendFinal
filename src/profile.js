@@ -105,10 +105,10 @@ const headlines = (req, res) => {
 
 const putHeadline = (req, res) => {
      //only allowed for logged in user
-     if (!req.body.headline) {
+     if (!(req.body.headline)) {
         res.sendStatus(400)
      } else {
-          setProfileField(req.body.headline, 'headline')
+          setProfileField('headline', req.body.headline)
           res.send({username: req.user, headline: profile.headline})
      }     
 }
