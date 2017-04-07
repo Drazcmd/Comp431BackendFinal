@@ -53,8 +53,8 @@ const getArticles = (req, res) => {
     res.send({
         //logical OR will work as expected assuming no author's id is equal to that
         //of an article. however, the API does not specify what to do in that case
-        articles: articles.filter(({id, author}) => {
-            return !idOrUser || id === idOrUser || author === idOrUser
+        articles: articles.filter((article) => {
+            return (!idOrUser || idOrUser == article.id || idOrUser == article.author)
         })
     })
 }
