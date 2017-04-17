@@ -1,0 +1,5 @@
+{
+	"netid": "cmd11",
+    "frontend": "http://and-all-i-got-was-this-tshirt.surge.sh/",
+    "backend": "https://cmd11bookserver.herokuapp.com/"
+}
