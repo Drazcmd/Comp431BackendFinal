@@ -47,11 +47,10 @@ const app = express()
 app.use(myCorsMiddleware)
 //see https://www.npmjs.com/package/body-parser-json
 app.use(bodyParser.json())
-//gives us register, login, and logout
 app.use(cookieParser())
-//gives us GET '/' and get/post '/articles'
+//gives us register, login, and logout
 auth.setup(app)
-//gives us login, register, logout
+//gives us GET '/' and get/post '/articles'
 articles.setup(app)
 //gives us tons of other stubs (mainly profile related)
 profile.setup(app)
