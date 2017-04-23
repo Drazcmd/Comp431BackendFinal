@@ -1,7 +1,6 @@
 const md5 = require('md5')
 const model = require('./model.js')
 const bodyParser = require('body-parser')
-const REDIS_URL = "redis://h:p58afdee5f98f2e9a6d89cb8f0f284a3b46ff8644bda0c55b4b9bddc6206e451b@ec2-34-206-56-30.compute-1.amazonaws.com:45719"
 
 exports.setup = function(app){
     app.post('/login', login)

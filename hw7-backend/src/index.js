@@ -57,7 +57,7 @@ profile.setup(app)
 //gives us get, post, and delete following
 following.setup(app)
 //To make CORs work (unsecurely), send an all-clear on every OPTIONS http request
-app.options('*', (req, res, next) =>{
+app.options('*', (req, res, next) => {
     console.log('ok, got preflight here!')
     res.sendStatus(200)
 })
