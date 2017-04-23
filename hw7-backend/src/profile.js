@@ -1,4 +1,3 @@
-const uploadImage = require('./uploadCloudinary').uploadImage
 exports.setup = function(app){
      app.get('/', index)
      //note this is the only one with :users rather than :user
@@ -12,7 +11,7 @@ exports.setup = function(app){
      app.put('/zipcode', putZipcode)
 
      app.get('/avatars/:user?', avatars)
-     app.put('/avatar', uploadImage('avatar'), uploadAvatar)
+     app.put('/avatar', uploadAvatar)
 
      app.get('/dob', dob)
 }
@@ -165,16 +164,20 @@ const avatars  = (req, res) => {
      res.send({avatars: [
           { username: req.user, avatar: profile.avatar}
      ]})
+
 }
 const uploadAvatar = (req, res) => {
-     //only allowed for logged in user
-     //TODO - this one is a bit odd...
-     if (!req.body.image){
-          res.sendStatus(400)
-     } else {
-          setProfileField('avatar', req.body.image)
-          res.send({username: user, avatar: accessField(user, 'avatar')}) 
-     }
+    //only *has* to be a stub
+    if (!req.body.image){
+        res.sendStatus(400)
+    } else {
+        if (req.body) {
+            setProfileField('avatar', req.body.image)
+            res.send({username: user, avatar: accessField(user, 'avatar')}) 
+        } else {
+            res.sendStatus(402);
+        }
+    }
 
 
 

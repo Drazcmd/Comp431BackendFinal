@@ -8,6 +8,12 @@ const following = require('./following.js')
 // Get the port from the environment, i.e., Heroku sets it
 const port = process.env.PORT || 3000
 
+//Run database locally when doing testing
+if (process.env.NODE_ENV !== "production") {
+    require('dot-env')
+}
+
+
 /**
  * This might not neccesarily be correct for all cases, I believe I wrote it
  * myself and it could potentially be doing something incorrect. However, it
