@@ -91,6 +91,8 @@ const register = (req, res) => {
 
 		//this had better be an empty array, otherwise the user already exists
 		if (response.length == 0) {
+			//Going by the instructions, now we have to add two documents: a 'user'
+			//document for dealing with login, and a 'profile' docuemnt with defaults
 			console.log('user', username, 'does not already have an entry; registration can procede')
 
 			//TODO - md5 isn't neccessarily the best hash funciton to use, but
@@ -98,10 +100,20 @@ const register = (req, res) => {
 			const salt = md5(username + Date.now())
 			const saltedPass = password + salt
 			const hash = md5(saltedPass)
-
 			model.User({'username': username, 'salt': salt, 'hash': hash}).save()
 			.then(response => {
-				console.log('successful registration: ', response)
+				console.log('successful auth-user object creation ', response)
+				return model.Profile({
+					'username': username, 
+					'status': 'I have no status and I must theme',
+				    'following': [ ],
+				    'email': 'lorem@lorem.com',
+				    'zipcode': 11111,
+				    'picture': 'http://random-ize.com/lorem-ipsum-generators/lorem-ipsum/lorem-ipsum.jpg'
+				}).save()
+			})
+			.then(response => {
+				console.log('successful profile-info object creation', response)
 				const msg = {username: username, result: 'success'}
 				res.send(msg)
 			}).catch(err => {
