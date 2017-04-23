@@ -1,17 +1,24 @@
 const express = require('express')
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
+
+// Get the port from the environment, i.e., Heroku sets it
+const port = process.env.PORT || 3000
+//Run database locally when doing testing
+if (process.env.NODE_ENV !== "production") {
+    console.log('Currently not running in production!')
+    //see https://www.npmjs.com/package/dotenv 
+    console.log(process.env.MONGOLAB_URI)
+    require('dot-env')
+    console.log(process.env.MONGOLAB_URI)
+}
+
+//Since some of these end up importing db.js, we need to make
+//sure we don't import our src files till after importing .env.json
 const auth = require('./auth')
 const articles = require('./articles')
 const profile = require('./profile.js')
 const following = require('./following.js')
-// Get the port from the environment, i.e., Heroku sets it
-const port = process.env.PORT || 3000
-
-//Run database locally when doing testing
-if (process.env.NODE_ENV !== "production") {
-    require('dot-env')
-}
 
 
 /**
@@ -20,6 +27,14 @@ if (process.env.NODE_ENV !== "production") {
  * seems to work on chrome with my frontend
  */
 function myCorsMiddleware(req, res, next) {
+    //no need to deal with this stuff when runnign it all locally
+    if (req.headers.host == 'localhost:3000') {
+        console.log('running locally - no need for cors')
+        console.log('you should probably remove this when going into staging')
+        next()
+        return 
+    }
+    console.log('request:', req.headers)
     res.setHeader('Access-Control-Allow-Origin', req.get('origin'))
     res.setHeader('Access-Control-Allow-Credentials', true)
     res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS')

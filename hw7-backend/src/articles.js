@@ -49,6 +49,7 @@ const postArticle = (req, res) => {
  * article we return just that article
 */
 const getArticles = (req, res) => {
+    console.log('hello??')
     const idOrUser = req.params.id
     res.send({
         //logical OR will work as expected assuming no author's id is equal to that

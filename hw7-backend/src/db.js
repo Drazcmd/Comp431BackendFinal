@@ -1,12 +1,7 @@
-var mongoose = require('mongoose')
+const mongoose = require('mongoose')
+const url = process.env.MONGOLAB_URI;
 
-// replace this "localhost" value with the one from heroku/mlab
-var url = 'mongodb://cmd11test:damage-butter-memory@ds143990.mlab.com:43990/cmd11backend_database'
-
-if (process.env.MONGOLAB_URI) {
-    url = process.env.MONGOLAB_URI;
-}
-
+console.log('connecting to mongolab database at this url:', url)
 mongoose.connect(url)
 
 ///////////////////////////////////////////////////
