@@ -58,17 +58,19 @@ const postArticle = (req, res) => {
  * author we return all articles by said author, and on an id of an
  * article we return just that article
  *
- * However, this week we can ignore authors/following and just return the whole 
+ * However, this week we can ignore authors/following stuff and just return the whole 
  * database whenever we receive a 'GET /articles'. So all we need to support
- * is /articles and /articles/id
+ * is /articles and /articles/id (where id can be a username or an article id)
 */
 const getArticles = (req, res) => {
     console.log('getting the articles...')
-    const id = req.params.id
+    const idOrUser = req.params.id
 
     //Empty {} for the find will get all articles in the database
     //Remember, this is only ok for this week - next week account for authors!
-    const databaseFilter = id ? {'_id': id} : {}
+    const databaseFilter = idOrUser 
+        ? {'$or': [{'_id': idOrUser}, {'_author':idOrUser}]} 
+        : {}
     model.Article.find(databaseFilter)
     .then(response => {
         console.log('got these articles back:', response)
