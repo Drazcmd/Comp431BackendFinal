@@ -5,16 +5,16 @@ exports.setup = function(app){
     app.get('/headlines/:users?', isLoggedInMiddleware, headlines)
     app.put('/headline', isLoggedInMiddleware, putHeadline)
 
-    app.get('/email/:user?', email)
-    app.put('/email', putEmail)
+    app.get('/email/:user?', isLoggedInMiddleware, email)
+    app.put('/email', isLoggedInMiddleware, putEmail)
 
-    app.get('/zipcode/:user?', zipcode)
-    app.put('/zipcode', putZipcode)
+    app.get('/zipcode/:user?', isLoggedInMiddleware, zipcode)
+    app.put('/zipcode', isLoggedInMiddleware, putZipcode)
 
     app.get('/avatars/:user?', avatars)
     app.put('/avatar', uploadAvatar)
 
-    app.get('/dob', dob)
+    app.get('/dob', isLoggedInMiddleware, dob)
 }
 
 //Note that according to the API, in many places I'm always using this as a 
@@ -53,6 +53,28 @@ const databaseReplacement = {
 //without doing mutation
 databaseReplacement[user] = profile;
 
+/*
+ * Builds a function to handle qurying the mongoose db. Returns
+ * a promise for the results of said query.
+ *
+ * One usage example:
+ * const handleRequest = buildProfileQueryHandler('email', false);
+ * handleRequest('cmd11test').then(response => ...);
+ */
+const buildProfileQueryHandler = (multipleUsersAllowed) => {
+    return (userParam => {
+        //userParam sometimes has to be a single user (see /email/:user?), and 
+        //sometimes has to be a comma separated lsit of them (see avatars/:user?)
+        const santiziedUserParam = multipleUsersAllowed 
+            ? userParam.split(',') 
+            : userParam
+        const databaseFilter = multipleUsersAllowed
+            ? {'username': {$in: santiziedUserParam}} 
+            : {'username': santiziedUserParam}
+        return model.Profile.find(databaseFilter)
+    })
+}
+
 /**
  * These three functions are needed to make implementation/choice of 
  * 'database' irrelevant 
@@ -88,14 +110,14 @@ name of the funciton doesn't cluse you in as to whether it is a 'POST' or
 See the API at https://www.clear.rice.edu/comp431/data/api.html#api
 */
 const headlines = (req, res) => {  
-    //Again, note that it's :users - not :user. These are comma separated
+    //Note that it's :users - not :user. This is a bit atypical
+    console.log('incomign headline request for these users:', req.params.users)
+
     //If not provided, we use the logged in user (and put it into an array 
     //so that we can use the same 'username in requestedUsers' regardless of which)
-    console.log('incomign headline request for these users:', req.users)
-    const requestedUsers = req.users ? req.users.split(',') : Array.of(req.userObj.username)
-    const databaseFilter = {'username': {$in: requestedUsers}}
-    console.log('this means the database request looks like', databaseFilter)
-    model.Profile.find(databaseFilter)
+    const requestedUsers = req.params.users ? req.params.users : req.userObj.username
+    const handleMongooseQuery = buildProfileQueryHandler(true);
+    handleMongooseQuery(requestedUsers)
     .then(response => {
         console.log('got these profiles back:', response)
         const requestedHeadlineObjs = response.map(profile => ({
@@ -142,18 +164,57 @@ const putHeadline = (req, res) => {
     }     
 }
 
-const email = (req, res) => {
-     if (!req.user) req.user = user
-     if (userExists(req.user)) {
-        res.send({ 
-            username: req.user,
-            email: accessField(req.user, 'email')
-        })
-     } else {
-        res.sendStatus(404)
-     }
 
-     res.send({username: req.user, email: req.body.email}) 
+/**
+ * Will work for any generic profile field that uses the same format for access
+ * in our internal database and response in the API as email, zipcode, and birth
+ *
+ * Note how these do NOT allow multiple inputted user ids - it takes just one!
+ */
+const getStandardProfileField = (fieldKey, requestedUser, res) => {
+    console.log('accessing this field:', fieldKey, 'for this user', requestedUser)
+    const handleMongooseQuery = buildProfileQueryHandler(false);
+    handleMongooseQuery(requestedUser)
+    .then(response => {
+        const returnedProfile = response[0]
+        console.log('got this profile back:', returnedProfile)
+        //See piazza @186 - this behavior differs from the dummy webserver, and
+        //is a 'good' way to handle it; the way the dumy server is responds is 'bad'
+        if (returnedProfile) {
+            //Unforunately, no good way to do this key other than mutation (since
+            //we don't actually know if it's for email or for zipcode atm)
+            const requestedObj = { 'username': returnedProfile.username }
+            //Only other way we might do this is by using a switch, but that
+            //enforces specific state reptition on this function in a bad manner
+            requestedObj[fieldKey] = returnedProfile[fieldKey]
+            console.log('which we format for return as', requestedObj)
+            res.send(requestedObj)
+        } else {
+            console.log('Clearly, the provided userId was not of an existing user')
+            console.log('As per piazza @186, the proper response in this case is 404')
+            res.sendStatus(404)
+        }
+    })
+    .catch(err => {
+        console.log('Problem with database query?:', err)
+        res.sendStatus(400)
+    })
+}
+
+//Yes, technically there's still some code duplication. HOWEVER, these requests 
+//SHOULDN'T be forced to use the same exact method for reading the input, given 
+//how there are exceptions like date of birth (which is otherwise the same)
+const email = (req, res) => {
+    const requestedUser = req.params.user ? req.params.user : req.userObj.username
+    getStandardProfileField('email', requestedUser, res) 
+}
+const zipcode = (req, res) => {
+    const requestedUser = req.params.user ? req.params.user : req.userObj.username
+    getStandardProfileField('zipcode', requestedUser, res) 
+}
+const dob = (req, res) => {
+    const loggedInUser = req.UserObj.username
+    getStandardProfileField('dob', loggedInUser, res)
 }
 
 const putEmail = (req, res) => {
@@ -166,17 +227,6 @@ const putEmail = (req, res) => {
      }
 }
 
-const zipcode = (req, res) => {
-     if (!req.user) req.user = user
-     if (userExists(req.user)) {
-          res.send({
-               username: req.body.username,
-               zipcode: accessField(req.user, 'zipcode')
-          })
-     } else {
-          res.sendStatus(404)
-     }
-}
 const putZipcode = (req, res) => {
      //only allowed for logged in user
      if (!req.body.zipcode) {
@@ -207,16 +257,4 @@ const uploadAvatar = (req, res) => {
             res.sendStatus(402);
         }
     }
-
-
-
-
-}
-const dob = (req, res) => {
-     //I think the API had a typo here. Gonna assume it should rally be like
-     //the other GET requsts, just without a corresponding PUT to update it.
-     if (!req.user) req.user = user
-     res.send(
-          { username: req.user, dob: profile.dob}
-     )
 }
