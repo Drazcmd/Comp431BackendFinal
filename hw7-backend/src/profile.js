@@ -1,19 +1,20 @@
+const model = require('./model.js')
+const isLoggedInMiddleware = require('./auth').isLoggedInMiddleware
 exports.setup = function(app){
-     app.get('/', index)
-     //note this is the only one with :users rather than :user
-     app.get('/headlines/:users?', headlines)
-     app.put('/headline', putHeadline)
+    //note this is the only one with :users rather than :user
+    app.get('/headlines/:users?', isLoggedInMiddleware, headlines)
+    app.put('/headline', isLoggedInMiddleware, putHeadline)
 
-     app.get('/email/:user?', email)
-     app.put('/email', putEmail)
+    app.get('/email/:user?', email)
+    app.put('/email', putEmail)
 
-     app.get('/zipcode/:user?', zipcode)
-     app.put('/zipcode', putZipcode)
+    app.get('/zipcode/:user?', zipcode)
+    app.put('/zipcode', putZipcode)
 
-     app.get('/avatars/:user?', avatars)
-     app.put('/avatar', uploadAvatar)
+    app.get('/avatars/:user?', avatars)
+    app.put('/avatar', uploadAvatar)
 
-     app.get('/dob', dob)
+    app.get('/dob', dob)
 }
 
 //Note that according to the API, in many places I'm always using this as a 
@@ -23,30 +24,29 @@ exports.loggedInUser = user
 
 //(Note that user won't change since login is stubbed atm)
 const profile = {
-     headline: 'This is my headline!',
-     email: 'cmd11test@blah.com',
-     zipcode: 12345,
-     avatar: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4e/DWLeebron.jpg/220px-DWLeebron.jpg',
-     dob: 700000000000
+    headline: 'This is my headline!',
+    email: 'cmd11test@blah.com',
+    zipcode: 12345,
+    avatar: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4e/DWLeebron.jpg/220px-DWLeebron.jpg',
+    dob: 700000000000
 }
 
 //in later projects we'll be using some sort of mongo database I believe
 const databaseReplacement = {
-     'sep1': {
-          headline: 'This a fake headline for my fake Dr. Pollack entry',
-          email: 'sep1test@blah.com',
-          zipcode: 13325,
-          avatar: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4e/DWLeebron.jpg/220px-DWLeebron.jpg',
-          //TODO - date of birth!
-
-     },
-     'sep2': {
-          headline: 'This is the fake headline of a fake twin of Dr. Pollack',
-          email: 'sep2test@blah.com',
-          zipcode: 13325,
-          avatar: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4e/DWLeebron.jpg/220px-DWLeebron.jpg',
-          //TODO - date of birth!
-     }
+    'sep1': {
+        headline: 'This a fake headline for my fake Dr. Pollack entry',
+        email: 'sep1test@blah.com',
+        zipcode: 13325,
+        avatar: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4e/DWLeebron.jpg/220px-DWLeebron.jpg',
+        //TODO - date of birth!
+    },
+    'sep2': {
+        headline: 'This is the fake headline of a fake twin of Dr. Pollack',
+        email: 'sep2test@blah.com',
+        zipcode: 13325,
+        avatar: 'https://upload.wikimedia.org/wikipedia/en/thumb/4/4e/DWLeebron.jpg/220px-DWLeebron.jpg',
+        //TODO - date of birth!
+    }
 }
 
 //Unfortunately, there's no way to use a variable as a key here 
@@ -87,41 +87,76 @@ name of the funciton doesn't cluse you in as to whether it is a 'POST' or
 
 See the API at https://www.clear.rice.edu/comp431/data/api.html#api
 */
-const index = (req, res) => {
-     res.send({ hello: 'world' })
-}
 const headlines = (req, res) => {  
-     //again, note that it's :users - not :user. These are comma separated
-     if (!req.users) req.users = user
-     const requestedUsers = req.users.split(',')
-     const requestedHeadlineObjs = requestedUsers.map((user) => {
-          return {
-               username: req.user,
-               headline: accessField(req.users, 'headline')
-          } 
-     })
-     res.send({ headlines: requestedHeadlineObjs})
+    //Again, note that it's :users - not :user. These are comma separated
+    //If not provided, we use the logged in user (and put it into an array 
+    //so that we can use the same 'username in requestedUsers' regardless of which)
+    const requestedUsers = req.users ? req.users.split(',') : Array.of(req.userObj.username)
+    const databaseFilter = {'username': {$in: requestedUsers}}
+
+    model.Profile.find(databaseFilter)
+    .then(response => {
+        console.log('got these profiles back:', response)
+        const requestedHeadlineObjs = response.map(profile => ({
+            username: profile.username,
+            headline: profile.status
+        }))
+        console.log('Which we format as ', requestedHeadlineObjs)
+        res.send({ headlines: requestedHeadlineObjs})
+    })
+    .catch(err => {
+        console.log('Problem with database query?:', err)
+        res.sendStatus(400)
+    })
+
+
 }
 
 const putHeadline = (req, res) => {
-     //only allowed for logged in user
-     if (!(req.body.headline)) {
+/* todo  change 
+    //see https://www.clear.rice.edu/comp431/data/database.html
+    //near the bottom for why we no logner populate the 'id' field ourselvsss
+    const newArticle = {
+        author:req.userObj.username,
+        text:req.body.text,
+        comments: []
+    }
+    //since the schema has {timestamps: true} it'll automatically set
+    //createdAt and updatedAt fields for us
+    model.Article(newArticle).save()
+    .then(response => {
+        console.log('database response:', response) 
+        //eventually we'll need to check if we must add an image in
+        const returnedArticle = formatArticleForAPI(response)
+
+        console.log('returned article:', returnedArticle)
+        //note that wrapping it in an array is on purpose, not a bug!
+        res.send({articles: [returnedArticle]})
+    })
+    .catch(err => {
+        console.log(err)
         res.sendStatus(400)
-     } else {
-          setProfileField('headline', req.body.headline)
-          res.send({username: req.user, headline: profile.headline})
-     }     
+    })
+}*/
+
+     //only allowed for logged in user
+    if (!(req.body.headline)) {
+        res.sendStatus(400)
+    } else {
+        setProfileField('headline', req.body.headline)
+        res.send({username: req.user, headline: profile.headline})
+    }     
 }
 
 const email = (req, res) => {
      if (!req.user) req.user = user
      if (userExists(req.user)) {
-          res.send({ 
-               username: req.user,
-               email: accessField(req.user, 'email')
-          })
+        res.send({ 
+            username: req.user,
+            email: accessField(req.user, 'email')
+        })
      } else {
-          res.sendStatus(404)
+        res.sendStatus(404)
      }
 
      res.send({username: req.user, email: req.body.email}) 
@@ -130,10 +165,10 @@ const email = (req, res) => {
 const putEmail = (req, res) => {
      //(only allowed for logged in user)
      if (!req.body.email) {
-          res.sendStatus(400)
+        res.sendStatus(400)
      } else {
-          setProfileField('email', req.email)
-          res.send({username: req.user, email: req.body.email})
+        setProfileField('email', req.email)
+        res.send({username: req.user, email: req.body.email})
      }
 }
 

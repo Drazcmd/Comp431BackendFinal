@@ -68,3 +68,9 @@ const server = app.listen(port, () => {
      console.log(`Server listening at http://${addr.address}:${addr.port}`)
 })
 
+const index = (req, res) => {
+    //purposefully leaving this one unauthenticated - in real life this would
+    //be a good way of letting someone making a frontend test they can connect
+    res.send({ hello: 'world' })
+}
+app.get('/', index)
