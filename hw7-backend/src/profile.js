@@ -158,6 +158,7 @@ const setProfileField = (res, username, fieldKey, newData) => {
 }
 
 /**
+ * (All of these only are allowed for the logged in user) 
  * Unlike with GET headline, this one is basically the exact same as the
  * corresponding email and zipcode PUTs
  */
@@ -171,7 +172,6 @@ const putHeadline = (req, res) => {
     }
 }
 const putEmail = (req, res) => {
-     //(only allowed for logged in user)
      if (!req.body.email) {
         res.sendStatus(400)
      } else {
@@ -181,13 +181,14 @@ const putEmail = (req, res) => {
      }
 }
 const putZipcode = (req, res) => {
-     //only allowed for logged in user
      if (!req.body.zipcode) {
-          res.sendStatus(400)
+        res.sendStatus(400)
      } else {
-          setProfileField('zipcode', req.body.zipcode)
-          res.send({username: req.user, zipcode: req.body.zipcode}) 
-     }
+        const userObj = req.userObj
+        const newZipcode = req.body.zipcode
+        setProfileField(res, userObj.username, 'zipcode', newZipcode) 
+    }
+
 }
 const avatars  = (req, res) => {
      //despite being 'user' it's actually possibly a comma separated list
