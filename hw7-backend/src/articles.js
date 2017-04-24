@@ -1,15 +1,24 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const model = require('./model.js')
-const loggedInUser = require('./profile').loggedInUser
-
+const isLoggedInMiddleware = require('./auth').isLoggedInMiddleware
 exports.setup = function(app){
     app.use(bodyParser.json())
     app.get('/', hello)
-    app.get('/articles/:id?', getArticles)
-    app.post('/article', postArticle)
-    app.put('/articles/:id', putArticles)
+    app.get('/articles/:id?', isLoggedInMiddleware, getArticles)
+    app.post('/article', isLoggedInMiddleware, postArticle)
+    app.put('/articles/:id', isLoggedInMiddleware, putArticles)
 }
+
+//Next week we'll need to account for images as well
+//TODO - check which entry we should use: createdAt or the updatedAt (for date)
+const formatArticleForAPI = (dbArticle) => ({
+    id: dbArticle._id,
+    author: dbArticle.author,
+    text: dbArticle.text,
+    date: dbArticle.createdAt,
+    comments: dbArticle.comments
+});
 
 /**
  * Adds a new article to the list of articles, and returns the 
@@ -22,7 +31,7 @@ const postArticle = (req, res) => {
     //see https://www.clear.rice.edu/comp431/data/database.html
     //near the bottom for why we no logner populate the 'id' field ourselvsss
     const newArticle = {
-        author:loggedInUser,
+        author:req.userObj.username,
         text:req.body.text,
         comments: []
     }
@@ -32,13 +41,8 @@ const postArticle = (req, res) => {
     .then(response => {
         console.log('database response:', response) 
         //eventually we'll need to check if we must add an image in
-        const returnedArticle = {
-            author: response.author,
-            text: response.text,
-            comments: response.comments,
-            id: response._id,
-            date: response.createdAt
-        }
+        const returnedArticle = formatArticleForAPI(response)
+
         console.log('returned article:', returnedArticle)
         //note that wrapping it in an array is on purpose, not a bug!
         res.send({articles: [returnedArticle]})
@@ -50,19 +54,31 @@ const postArticle = (req, res) => {
 }
 
 /*
- * On no id we just return everything, on an id of an
+ * On no id we just return everything, and according to the API on an id of an
  * author we return all articles by said author, and on an id of an
  * article we return just that article
+ *
+ * However, this week we can ignore authors/following and just return the whole 
+ * database whenever we receive a 'GET /articles'. So all we need to support
+ * is /articles and /articles/id
 */
 const getArticles = (req, res) => {
-    console.log('hello??')
-    const idOrUser = req.params.id
-    res.send({
-        //logical OR will work as expected assuming no author's id is equal to that
-        //of an article. however, the API does not specify what to do in that case
-        articles: articles.filter((article) => {
-            return (!idOrUser || idOrUser == article.id || idOrUser == article.author)
-        })
+    console.log('getting the articles...')
+    const id = req.params.id
+
+    //Empty {} for the find will get all articles in the database
+    //Remember, this is only ok for this week - next week account for authors!
+    const databaseFilter = id ? {'_id': id} : {}
+    model.Article.find(databaseFilter)
+    .then(response => {
+        console.log('got these articles back:', response)
+        const returnedArticles = response.map(formatArticleForAPI)
+        console.log('Formatted for the client, looks like this:', returnedArticles)
+        res.send({articles: returnedArticles})
+    })
+    .catch(err => {
+        console.log('Problem with database query?:', err)
+        res.sendStatus(400)
     })
 }
 

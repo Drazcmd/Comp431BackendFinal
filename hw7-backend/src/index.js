@@ -8,9 +8,10 @@ const port = process.env.PORT || 3000
 if (process.env.NODE_ENV !== "production") {
     console.log('Currently not running in production!')
     //see https://www.npmjs.com/package/dotenv 
-    console.log(process.env.MONGOLAB_URI)
+    console.log('inital mongolab uri:', process.env.MONGOLAB_URI)
+    console.log('now importing .env.json...\n ')
     require('dot-env')
-    console.log(process.env.MONGOLAB_URI)
+    console.log('mongolab uri after the import:', process.env.MONGOLAB_URI)
 }
 
 //Since some of these end up importing db.js, we need to make
