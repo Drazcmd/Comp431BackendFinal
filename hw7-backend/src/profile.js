@@ -91,9 +91,10 @@ const headlines = (req, res) => {
     //Again, note that it's :users - not :user. These are comma separated
     //If not provided, we use the logged in user (and put it into an array 
     //so that we can use the same 'username in requestedUsers' regardless of which)
+    console.log('incomign headline request for these users:', req.users)
     const requestedUsers = req.users ? req.users.split(',') : Array.of(req.userObj.username)
     const databaseFilter = {'username': {$in: requestedUsers}}
-
+    console.log('this means the database request looks like', databaseFilter)
     model.Profile.find(databaseFilter)
     .then(response => {
         console.log('got these profiles back:', response)
@@ -114,15 +115,6 @@ const headlines = (req, res) => {
 
 const putHeadline = (req, res) => {
 /* todo  change 
-    //see https://www.clear.rice.edu/comp431/data/database.html
-    //near the bottom for why we no logner populate the 'id' field ourselvsss
-    const newArticle = {
-        author:req.userObj.username,
-        text:req.body.text,
-        comments: []
-    }
-    //since the schema has {timestamps: true} it'll automatically set
-    //createdAt and updatedAt fields for us
     model.Article(newArticle).save()
     .then(response => {
         console.log('database response:', response) 
@@ -143,7 +135,9 @@ const putHeadline = (req, res) => {
     if (!(req.body.headline)) {
         res.sendStatus(400)
     } else {
-        setProfileField('headline', req.body.headline)
+
+
+
         res.send({username: req.user, headline: profile.headline})
     }     
 }
