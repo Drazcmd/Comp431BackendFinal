@@ -1,7 +1,11 @@
 const express = require('express')
 const bodyParser = require('body-parser')
+//Only needed for validating inputted ids as possible articleIds
+const mongoose = require('mongoose')
 const model = require('./model.js')
 const isLoggedInMiddleware = require('./auth').isLoggedInMiddleware
+
+
 exports.setup = function(app){
     app.use(bodyParser.json())
     app.get('/', hello)
@@ -64,24 +68,35 @@ const postArticle = (req, res) => {
 */
 const getArticles = (req, res) => {
     console.log('getting the articles...')
-    const idOrUser = req.params.id
+    //This week only if an id is provided it HAS to be an article id, can't be a userId
+    const id = req.params.id
+    if (id && !model.isPossibleId(id)){
+        //In this case, they gave us an id, but it doesn't fit the format of a valid article 
+        //id since it isn't an _id mongoose might give to a docuemnt. We can simply return 
+        //an empty array. Next week this will have to change, as it's likely a userId 
+        console.log('provided id is invalid!')
+        res.send({articles:[]})
+    } else {
+        //Now we know that either the id is a valid article id or doesn't exist at all,
+        //These are both likely to return articles - either return all the articles in the
+        //database, or a single article (if one with its id exists - otherwise none)
+        //The empty {} for the find will get all articles in the database
+        const databaseFilter = id && model.isPossibleId(id)
+            ? {'_id': id}
+            : {}
+        model.Article.find(databaseFilter)
+        .then(response => {
+            console.log('got these articles back:', response)
+            const returnedArticles = response.map(formatArticleForAPI)
+            console.log('Formatted for the client, looks like this:', returnedArticles)
+            res.send({articles: returnedArticles})
+        })
+        .catch(err => {
+            console.log('Problem with database query?:', err)
+            res.sendStatus(400)
+        })
+    }
 
-    //Empty {} for the find will get all articles in the database
-    //Remember, this is only ok for this week - next week account for authors!
-    const databaseFilter = idOrUser 
-        ? {'$or': [{'_id': idOrUser}, {'_author':idOrUser}]} 
-        : {}
-    model.Article.find(databaseFilter)
-    .then(response => {
-        console.log('got these articles back:', response)
-        const returnedArticles = response.map(formatArticleForAPI)
-        console.log('Formatted for the client, looks like this:', returnedArticles)
-        res.send({articles: returnedArticles})
-    })
-    .catch(err => {
-        console.log('Problem with database query?:', err)
-        res.sendStatus(400)
-    })
 }
 
 /*

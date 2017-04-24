@@ -29,3 +29,7 @@ const articleSchema = new mongoose.Schema({
 exports.Article = mongoose.model('article', articleSchema)
 exports.Profile = mongoose.model('profile', profileSchema)
 exports.User = mongoose.model('users', userSchema)
+
+//This is a function that I will be mainly using to distinguish between
+//inputted article ids and usernames
+exports.isPossibleId = mongoose.Types.ObjectId.isValid
