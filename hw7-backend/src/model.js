@@ -14,6 +14,7 @@ const profileSchema = new mongoose.Schema({
     following: [ String ],
     email: String,
     zipcode: String,
+    dob: String,
     picture: String    
 })
 const commentSchema = new mongoose.Schema({

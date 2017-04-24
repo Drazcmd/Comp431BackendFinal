@@ -23,7 +23,7 @@ const user = 'cmd11test'
 exports.loggedInUser = user 
 
 //(Note that user won't change since login is stubbed atm)
-const profile = {
+const OLDprofile = {
     headline: 'This is my headline!',
     email: 'cmd11test@blah.com',
     zipcode: 12345,
@@ -51,7 +51,7 @@ const databaseReplacement = {
 
 //Unfortunately, there's no way to use a variable as a key here 
 //without doing mutation
-databaseReplacement[user] = profile;
+databaseReplacement[user] = OLDprofile;
 
 /*
  * Builds a function to handle qurying the mongoose db. Returns
@@ -213,7 +213,7 @@ const zipcode = (req, res) => {
     getStandardProfileField('zipcode', requestedUser, res) 
 }
 const dob = (req, res) => {
-    const loggedInUser = req.UserObj.username
+    const loggedInUser = req.userObj.username
     getStandardProfileField('dob', loggedInUser, res)
 }
 
@@ -241,7 +241,7 @@ const avatars  = (req, res) => {
      //like headline's 'users'
      if (!req.user) req.user = user
      res.send({avatars: [
-          { username: req.user, avatar: profile.avatar}
+          { username: req.user, avatar: OLDprofile.avatar}
      ]})
 
 }

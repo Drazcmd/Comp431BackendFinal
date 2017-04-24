@@ -79,6 +79,30 @@ const login = (req, res) => {
 }
 
 /**
+ * The only tricky part is that date of birth might be null, and I've decided
+ * to allow that (for now at least)
+ */
+const initializeProfile = (username, email, zipcode, dob) => {
+    const profile = dob && dob.toString() ? {
+            'username': username, 
+            'status': 'I got 99 problems, but a dob aint one',
+            'following': [ ],
+            'email': email,
+            'zipcode': zipcode,
+            'dob': dob.toString(),
+            'picture': 'http://random-ize.com/lorem-ipsum-generators/lorem-ipsum/lorem-ipsum.jpg'
+        } : {
+            'username': username, 
+            'status': 'I have no status and I must theme',
+            'following': [ ],
+            'email': email, 
+            'zipcode': zipcode,
+            'dob': "700000000000",
+            'picture': 'http://random-ize.com/lorem-ipsum-generators/lorem-ipsum/lorem-ipsum.jpg'
+        } 
+    return profile
+}
+/**
  * Creates an authentication entry in the database for the registering user,
  * in addition to giving him/her some default profile information
  *
@@ -87,11 +111,21 @@ const login = (req, res) => {
  */
 const register = (req, res) => {
     const username = req.body.username;
+    const email = req.body.email;
+    const zipcode = req.body.zipcode;
     const password = req.body.password;
-    if (!username || !password) {
+    //date of birth is not required, but supported if provided
+    //This is due to the API and requirements being vague and/or
+    //contradictory as to whether we do or do not need it 
+    const dob = req.body.dob
+    if (!(username && zipcode && email && password)) {
+        console.log('missing one of the required fields for registration!')
         res.sendStatus(400)
         return
     }
+
+    const initializedProfile = initializeProfile(username, email, zipcode, dob)
+    console.log('If we end up making it, the requested profile will be this:', initializedProfile)
 
     //we don't want to allow multiple users with the same username
     model.User.find({username: username})
@@ -110,14 +144,6 @@ const register = (req, res) => {
             .then(response => {
                 console.log('\nsuccessful auth-user object creation ', response)
                 //...and a profile
-                const initializedProfile = {
-                    'username': username, 
-                    'status': 'I have no status and I must theme',
-                    'following': [ ],
-                    'email': 'lorem@lorem.com',
-                    'zipcode': 11111,
-                    'picture': 'http://random-ize.com/lorem-ipsum-generators/lorem-ipsum/lorem-ipsum.jpg'
-                }
                 return model.Profile(initializedProfile).save()
             })
             .then(response => {
@@ -140,8 +166,8 @@ const register = (req, res) => {
         res.sendStatus(400) 
         return
     })
-
 }
+
 //TODO - NOT WORKING YET! But we don't need it for this excercise
 const logout = (req, res) => {
     res.sendStatus(400)
