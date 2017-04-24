@@ -1,5 +1,6 @@
 const express = require('express')
 const bodyParser = require('body-parser')
+const model = require('./model.js')
 const loggedInUser = require('./profile').loggedInUser
 
 exports.setup = function(app){
@@ -10,38 +11,43 @@ exports.setup = function(app){
     app.put('/articles/:id', putArticles)
 }
 
-const articles = [
-    { id:1, author:'Scott', text:'This is my first article'},
-    { id:2, author: 'Max', text:"This is Max's article"},
-    { id:3, author: 'Leo', text:"This is Leo's article"}
-]
-
 /**
  * Adds a new article to the list of articles, and returns the 
  * newly added article (not all the articles!). However, according
  * to the api specificaiton, even though it just sends one article back,
  * that article has to be wrapped in an array accessed by key 'articles'
+ * On later assignments this will have to allow images (text only right now)
 */
 const postArticle = (req, res) => {
-    const newArticle = req.image ?
-    {
-        //sadly can't use spread operator here :/
-        id: articles.length + 1,
-        author: loggedInUser,
-        text:req.body.text,
-        img:req.image
-    } : {
-        id: articles.length+1,
+    //see https://www.clear.rice.edu/comp431/data/database.html
+    //near the bottom for why we no logner populate the 'id' field ourselvsss
+    const newArticle = {
         author:loggedInUser,
-        text:req.body.text
+        text:req.body.text,
+        comments: []
     }
-    articles.push(newArticle)
-
-    //note that wrapping it in an array is on purpose, not a bug!
-    const returnedArticle = [newArticle]
-    res.send({articles: returnedArticle})
+    //since the schema has {timestamps: true} it'll automatically set
+    //createdAt and updatedAt fields for us
+    model.Article(newArticle).save()
+    .then(response => {
+        console.log('database response:', response) 
+        //eventually we'll need to check if we must add an image in
+        const returnedArticle = {
+            author: response.author,
+            text: response.text,
+            comments: response.comments,
+            id: response._id,
+            date: response.createdAt
+        }
+        console.log('returned article:', returnedArticle)
+        //note that wrapping it in an array is on purpose, not a bug!
+        res.send({articles: [returnedArticle]})
+    })
+    .catch(err => {
+        console.log(err)
+        res.sendStatus(400)
+    })
 }
-
 
 /*
  * On no id we just return everything, on an id of an
