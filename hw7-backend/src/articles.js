@@ -107,6 +107,15 @@ const getArticles = (req, res) => {
 
 }
 
+const respondToPutArticles = (databaseResponse, res) => {
+    //eventually we'll need to check if we must add an image in
+    const returnedArticle = formatArticleForAPI(databaseResponse)
+    console.log('returned article:', returnedArticle)
+
+    //note that wrapping it in an array is on purpose, not a bug!
+    res.send({articles: [returnedArticle]})
+}
+
 /*
  * Diffeerent from POST article - this has to do with either editing article text
  * or positing or editing comments. That being said, it's only stubbed here
@@ -133,98 +142,74 @@ const putArticles = (req, res) => {
         return articleToUpdate
     })
     .then(articleToUpdate => {
-        //First: Posting a new comment. Do this when commentId equals -1
-        if (req.body.commentId === -1){
-            const existingComments = articleToUpdate.comments
-            //like with articles, it'll set a createdAt and updatedAt fields
-            //autmoatically because in model.js we specified {'timestamps':true}
-            //OTOH, the _id is set because we're doing it as an embedded document!
-            const newComment = model.Comment({
-                author: req.userObj.username, text: newText
-            })
-            articleToUpdate.comments.push(newComment)
-            articleToUpdate.save()
-            .then((response) => {
-                console.log('database response:', response) 
-                //eventually we'll need to check if we must add an image in
-                const returnedArticle = formatArticleForAPI(response)
-
-                console.log('returned article:', returnedArticle)
-                //note that wrapping it in an array is on purpose, not a bug!
-                res.send({articles: [returnedArticle]})
-            }) 
-            .catch(err => {
-                console.log("problem with posting the comment!", err)
-                res.sendStatus(400)
-            })
-            return
-        } else if (req.body.commentId && model.isPossibleId(req.body.commentId)){
-            //Second - editing an existing comment. There's two reasons why I'm using
-            //the mongoose id itself as the comment id. First, it means 0 cannot be a
-            //valid id in the database (too short!) which drastically simplifies life
-            //in terms of checking if it's valid. Second, it makes it wayyyy easier
-            //to find and update the comment in there!
-            const commentToUpdate = articleToUpdate.comments.id(req.body.commentId)
-            if (!commentToUpdate) {
-                res.sendStatus(404)
-                return 
-            }
-            if (commentToUpdate.author != req.userObj.username){
-                //can only update our own comments
-                res.sendStatus(403)
-                return
-            }
-            //basically, we can use parent.children.id(id) and then just save the parent
-            //This is much much easier than having to take care of it ourself!
-            commentToUpdate.text = newText
-            articleToUpdate.save()
-            .then((response) => {
-                console.log('database response:', response) 
-                //eventually we'll need to check if we must add an image in
-                const returnedArticle = formatArticleForAPI(response)
-
-                console.log('returned article:', returnedArticle)
-                //note that wrapping it in an array is on purpose, not a bug!
-                res.send({articles: [returnedArticle]})
-            })
-            .catch(err => {
-                console.log("problem with updating the comment!", err)
-                res.sendStatus(400)
-            })
-            return
-        } else if (!(req.body.commentId) && req.body.commentId !== 0){
-            //Third - editing an existing article. Do when commentId is not provided 
-            //(Note that we need to be careful of an inputted 0 - that's an invalid
-            //comment ID, not a situation where the id wasn't provided!)
-            if (articleToUpdate.author != req.userObj.username){
-                //can only update text form our own article
-                res.sendStatus(403)
-                return
-            }
-            articleToUpdate.text = newText
-            articleToUpdate.save()
-            .then((response) => {
-                console.log('database response:', response) 
-                //eventually we'll need to check if we must add an image in
-                const returnedArticle = formatArticleForAPI(response)
-
-                console.log('returned article:', returnedArticle)
-                //note that wrapping it in an array is on purpose, not a bug!
-                res.send({articles: [returnedArticle]})
-            })
-            .catch(err => {
-                console.log("problem with updating the comment!", err)
-                res.sendStatus(400)
-            })
-            return
-        } else {
-            res.sendStatus(400)
-            return
-        }
+        handlePutArticlesAction(req, res, articleToUpdate, id, newText)
     })
     .catch(err => {
         console.log("could not find the article??", err)
         res.sendStatus(404)
     })
+}
+
+const handlePutArticlesAction = (req, res, articleToUpdate, id, newText) => {
+    //First: Posting a new comment. Do this when commentId equals -1
+    if (req.body.commentId === -1){
+        const existingComments = articleToUpdate.comments
+        //like with articles, it'll set a createdAt and updatedAt fields
+        //autmoatically because in model.js we specified {'timestamps':true}
+        //OTOH, the _id is set because we're doing it as an embedded document!
+        const newComment = model.Comment({author: req.userObj.username, text: newText})
+        articleToUpdate.comments.push(newComment)
+        articleToUpdate.save()
+        .then((response) => {
+            respondToPutArticles(response, res)
+        }) 
+        .catch(err => {
+            console.log("problem with posting the comment!", err)
+            res.sendStatus(400)
+        })
+    } else if (req.body.commentId && model.isPossibleId(req.body.commentId)){
+        //Second - editing an existing comment. There's two reasons why I'm using
+        //the mongoose id itself as the comment id. First, it means 0 cannot be a
+        //valid id in the database (too short!) which drastically simplifies life
+        //in terms of checking if it's valid. Second, it makes it wayyyy easier
+        //to find and update the comment in there!
+        const commentToUpdate = articleToUpdate.comments.id(req.body.commentId)
+        if (!commentToUpdate) {
+            res.sendStatus(404)
+            return 
+        }
+        if (commentToUpdate.author != req.userObj.username){
+            //can only update our own comments
+            res.sendStatus(403)
+            return
+        }
+        //basically, we can use parent.children.id(id) and then just save the parent
+        //This is much much easier than having to take care of it ourself!
+        commentToUpdate.text = newText
+        articleToUpdate.save()
+        .then((response) => {respondToPutArticles(response, res)})
+        .catch(err => {
+            console.log("problem with updating the comment!", err)
+            res.sendStatus(400)
+        })
+    } else if (!(req.body.commentId) && req.body.commentId !== 0){
+        //Third - editing an existing article. Do when commentId is not provided 
+        //(Note that we need to be careful of an inputted 0 - that's an invalid
+        //comment ID, not a situation where the id wasn't provided!)
+        if (articleToUpdate.author != req.userObj.username){
+            //can only update text form our own article
+            res.sendStatus(403)
+            return
+        }
+        articleToUpdate.text = newText
+        articleToUpdate.save()
+        .then((response) => {respondToPutArticles(response, res)})
+        .catch(err => {
+            console.log("problem with updating the article!", err)
+            res.sendStatus(400)
+        })
+    } else {
+        res.sendStatus(400)
+    }
 }
 
