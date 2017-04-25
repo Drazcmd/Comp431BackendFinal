@@ -1,29 +1,31 @@
-//'user' as in the currently logged in user. this is currently for stubbing, 
-//otherwise we'd want to grab it from profile.js
-const user = 'cmd11test'
+const model = require('./model.js')
+const isLoggedInMiddleware = require('./auth').isLoggedInMiddleware
 
-//eventually this will also end up being a database instead
-const followingMap = {}
-//'followees' as in people the user are following, not those following the user!
-const userFollowees = new Set(['sep1test', 'sep2test'])
-//as elsewhere, no good way to do this other than mutation :/
-followingMap[user] = userFollowees
-
-exports.setup = function(app){
-     app.get('/following/:user?', following)
-     app.put('/following/:user?', putFollowing)
-     app.delete('/following/:user?', deleteFollowing)
+const findFollowees = (requestedUser) => {
+    console.log("Getting the users that this person follows: ", requestedUser)
+    const databaseFilter = {'username': requestedUser}
+    return model.Profile.find(databaseFilter).then(response => {
+        console.log('response to find:', response)
+        return response.following ? response.following : []
+    })
 }
 
-const following = (req, res) => {  
-    //again, note that it's :users - not :user
-    if (!req.user) req.user = user
-    if (req.user in followingMap) {
-        //spread operator to convert the set (from inside the map) back to list
-        res.send({ username: req.user, following: [...followingMap[req.user]]})
-    } else {
+/**
+ * Although similar to code for grabbing emails/zipcodes, it's different enough
+ * that we really need to have our own completely isolated function for this stuff
+ */
+const following = (req, res) => { 
+    const requestedUser = req.params.user ? req.params.user : req.userObj.username
+    findFollowees(requestedUser)
+    .then(following => {
+        //('following' as in the people that the requested user is following)
+        console.log(requestedUser, 'is following these people:', following)
+        res.send({'username': requestedUser, 'following': following})
+    })
+    .catch(err => {
+        console.log('Problem with database query?:', err)
         res.sendStatus(400)
-    }
+    })
 }
 
 const putFollowing = (req, res) => {
@@ -38,14 +40,41 @@ const putFollowing = (req, res) => {
     }
 }
 
+/**
+ * Cleanest way I found is to do one find operation to get the current follwoers,
+ * do a fileter operation on it, and then do a findAndUpdate to set the followers
+ * to the result (which will have said follower filtered out)
+ */
 const deleteFollowing = (req, res) => {
-    if (!req.user) {
+    //no default user on this one! Either id is provided or we have a problem
+    const userToDelete = req.params.user
+    if (!userToDelete) {
         res.sendStatus(400)
-    } else {
-        //TODO - if not already following, an error?
-        userFollowees.delete(req.user)
-        //a bit weird, just like with putFollowing
-        res.send({ username: req.user, following: [...userFollowees]})
+        return
     }
+    //First step - find out who we follow...
+    findFollowees(req.userObj.username)
+    .then(following => {
+        const updatedFollowees = following.filter((followee) => {
+            followee != userToDelete
+        })
+        model.Profile.findOneAndUpdate({'username': userObj.username}, {'following': updatedFollowees})
+        .then(response => {
+            console.log('response to the update:', response)
+            res.send({'username': response.username, 'following': response.following})
+        }).catch(err => {
+            console.log('Problem on database update??', err)
+            res.sendStatus(400)
+        })
+    })
+    .catch(err => {
+        console.log('Problem on database find??', err)
+        res.sendStatus(400)
+    })
 
+}
+exports.setup = function(app){
+    app.get('/following/:user?', isLoggedInMiddleware, following)
+    app.put('/following/:user?', isLoggedInMiddleware, putFollowing)
+    app.delete('/following/:user?', isLoggedInMiddleware, deleteFollowing)
 }
