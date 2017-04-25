@@ -11,8 +11,8 @@ exports.setup = function(app){
     app.get('/zipcode/:user?', isLoggedInMiddleware, zipcode)
     app.put('/zipcode', isLoggedInMiddleware, putZipcode)
 
-    app.get('/avatars/:user?', avatars)
-    app.put('/avatar', uploadAvatar)
+    app.get('/avatars/:user?', isLoggedInMiddleware, avatars)
+    app.put('/avatar', isLoggedInMiddleware, uploadAvatar)
 
     app.get('/dob', isLoggedInMiddleware, dob)
 }
@@ -191,24 +191,30 @@ const putZipcode = (req, res) => {
 
 }
 const avatars  = (req, res) => {
-     //despite being 'user' it's actually possibly a comma separated list
-     //like headline's 'users'
-     if (!req.user) req.user = user
-     res.send({avatars: [
-          { username: req.user, avatar: OLDprofile.avatar}
-     ]})
-
-}
-const uploadAvatar = (req, res) => {
-    //only *has* to be a stub
-    if (!req.body.image){
+    //NOTE - despite the optional input parameter being called 'user' here, it's
+    //actually possibly a comma separated list (like headline's 'users')
+    const requestedUsers = req.params.user ? req.params.user : req.userObj.username
+    const handleMongooseQuery = buildProfileQueryHandler(true);
+    handleMongooseQuery(requestedUsers)
+    .then(response => {
+        console.log('got these profiles back:', response)
+        const requestedAvatarObjs = response.map(profile => ({
+            username: profile.username,
+            avatar: profile.picture
+        }))
+        console.log('Which we format as ', requestedAvatarObjs)
+        res.send({ avatars: requestedAvatarObjs})
+    })
+    .catch(err => {
+        console.log('Problem with database query?:', err)
         res.sendStatus(400)
-    } else {
-        if (req.body) {
-            setProfileField('avatar', req.body.image)
-            res.send({username: user, avatar: accessField(user, 'avatar')}) 
-        } else {
-            res.sendStatus(402);
-        }
-    }
+    })
+}
+
+//This guys is the only endpoint we're allowed to stub for this assignment!
+const uploadAvatar = (req, res) => {
+    res.send({
+        username: req.userObj.username, 
+        avatar: 'http://random-ize.com/lorem-ipsum-generators/lorem-ipsum/lorem-ipsum.jpg'
+    })
 }
