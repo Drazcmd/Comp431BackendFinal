@@ -169,6 +169,11 @@ const putArticles = (req, res) => {
                 res.sendStatus(404)
                 return 
             }
+            if (commentToUpdate.author != req.userObj.username){
+                //can only update our own comments
+                res.sendStatus(403)
+                return
+            }
             //basically, we can use parent.children.id(id) and then just save the parent
             //This is much much easier than having to take care of it ourself!
             commentToUpdate.text = newText
@@ -191,7 +196,26 @@ const putArticles = (req, res) => {
             //Third - editing an existing article. Do when commentId is not provided 
             //(Note that we need to be careful of an inputted 0 - that's an invalid
             //comment ID, not a situation where the id wasn't provided!)
-            res.sendStatus(500)
+            if (articleToUpdate.author != req.userObj.username){
+                //can only update text form our own article
+                res.sendStatus(403)
+                return
+            }
+            articleToUpdate.text = newText
+            articleToUpdate.save()
+            .then((response) => {
+                console.log('database response:', response) 
+                //eventually we'll need to check if we must add an image in
+                const returnedArticle = formatArticleForAPI(response)
+
+                console.log('returned article:', returnedArticle)
+                //note that wrapping it in an array is on purpose, not a bug!
+                res.send({articles: [returnedArticle]})
+            })
+            .catch(err => {
+                console.log("problem with updating the comment!", err)
+                res.sendStatus(400)
+            })
             return
         } else {
             res.sendStatus(400)
