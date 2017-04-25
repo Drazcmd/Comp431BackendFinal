@@ -17,16 +17,16 @@ const profileSchema = new mongoose.Schema({
     dob: String,
     picture: String    
 })
+//note how {timestamps: true} removes need for a date field on these two
 const commentSchema = new mongoose.Schema({
-	commentId: Number, author: String, date: Date, text: String
-})
-
-//note how {timestamps: true} removes need for a date field
+	commentId: Number, author: String, text: String
+}, {timestamps: true})
 const articleSchema = new mongoose.Schema({
 	id: Number, author: String, img: String, text: String,
 	comments: [ commentSchema ]
 }, {timestamps: true})
 
+exports.Comment = mongoose.model('comment', commentSchema)
 exports.Article = mongoose.model('article', articleSchema)
 exports.Profile = mongoose.model('profile', profileSchema)
 exports.User = mongoose.model('users', userSchema)
