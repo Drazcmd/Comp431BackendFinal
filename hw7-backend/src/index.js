@@ -36,15 +36,7 @@ function myCorsMiddleware(req, res, next) {
         return 
     }
     console.log('request:', req.headers)
-    if (!req.headers.origin) {
-        //yes, this is a glob. However, I don't want to lock out the graders if they
-        //use something like ARC, which will NOT specify a origin on the request
-        //(I noticed this when doing testing myself).
-        //For any 'real' cross-origin requests, THIS GLOB WILL NOT BE USED!!!!
-        //instead, it will using the origin 'properly', as seen in the else block below
-        //res.setHeader('Access-Control-Allow-Origin', '*')
-        ;
-    } else{
+    if (req.headers.origin) {
         //WHENEVER WE CAN, we want to be using acces control policy properly
         res.setHeader('Access-Control-Allow-Origin', req.headers.origin)
     }
