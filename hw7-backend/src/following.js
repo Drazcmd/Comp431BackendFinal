@@ -75,6 +75,10 @@ const putFollowing = (req, res) => {
 
 /**
  * Deleting is almost the exact same, just with a filter operation
+ * Note - yes, this is repeating some code. Howver, it would be dangerous
+ * to couple deleting and getting more than they are now, as it would make
+ * this particular code much more brittle. Although mostly the same now, they
+ * need to be separated out for future updates (possibly in next week even!)
  */
 const deleteFollowing = (req, res) => {
     //no default user on this one! Either id is provided or we have a problem
@@ -83,20 +87,20 @@ const deleteFollowing = (req, res) => {
         res.sendStatus(400)
         return
     }
-    console.log('time to delete:', userToFollow)
+    console.log('time to delete:', userToDelete)
     //First step - find out who we follow...
     const username = req.userObj.username
     findFollowees(username)
     .then(following => {
+        console.log('User was following:', following)
         //If we're not already following them, don't have to actually do anything
-        if (!(following.some(followee => followee === userToFollow))) {
+        if (!(following.some(followee => followee === userToDelete))) {
             res.send({'username': username, 'following': following})
             return
         } 
 
-        const updatedFollowees = following.filter((followee) => {
-            followee != userToDelete
-        })
+        const updatedFollowees = following.filter((followee) => followee !== userToDelete)
+        console.log('updated following:', updatedFollowees)
         model.Profile.findOneAndUpdate(
             {'username': username}, {'following': updatedFollowees}, {'new':true}
         ).then(response => {
