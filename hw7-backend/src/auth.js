@@ -23,7 +23,9 @@ const saltAndHashPassword = (salt, password) => md5(password + salt);
  */
 const login = (req, res) => {
     console.log('Payload received', req.body)
-
+    console.log('\n\n')
+    console.log('What is the current sid map?:', sessionMap)
+    console.log('\n\n')
     const username = req.body.username;
     const password = req.body.password;
     if (!username || !password) {

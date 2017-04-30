@@ -29,12 +29,6 @@ const following = require('./following.js')
  */
 function myCorsMiddleware(req, res, next) {
     //no need to deal with this stuff when runnign it all locally
-    if (req.headers.host == 'localhost:3000') {
-        console.log('running locally - no need for/cannot use cors atm')
-        console.log('you should probably remove this when going into staging')
-        next()
-        return 
-    }
     console.log('request:', req.headers)
     if (req.headers.origin) {
         //WHENEVER WE CAN, we want to be using acces control policy properly
