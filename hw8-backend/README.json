@@ -1,0 +1,5 @@
+{
+	"netid": "cmd11",
+    "frontend": "https://besthw7frontendever.surge.sh",
+    "backend": "https://besthw7serverever.herokuapp.com/"
+}
