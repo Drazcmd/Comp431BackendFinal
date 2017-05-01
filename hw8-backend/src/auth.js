@@ -54,10 +54,14 @@ const login = (req, res) => {
             const sid = md5(dateStr + randomStr)
             console.log('our new session id is:', sid)
             redis.hmset(sid, userObj)
-            redis.hgetall(sid, function(err, userObj) {
+            redis.hgetall(sid, (err, userObj) => {
+                if (err) {
+                    console.log('Uh oh! Problem creating session cookie')
+                    res.sendStatus(401)
+                    throw 'Problem accessing newly created sesion cookie in redis?'
+                }
                 console.log(sid, 'mapped to ', userObj)
             })
-
             //we'll be needign this cookie on all incoming requests to check if logged in   
             console.log('setting response cookie')
             res.cookie(cookieKey, sid, {maxAge: 3600*1000, httpOnly: true})
@@ -171,35 +175,50 @@ const register = (req, res) => {
     })
 }
 
-//TODO - NOT WORKING YET! But we don't need it for this excercise
 const logout = (req, res) => {
     const sid = req.cookies[cookieKey]
-    const userObj = sessionMap[sid]
-    console.log('logging out this person:', userObj)
-    delete(sessionMap[sid])
-    console.log('the auth entry inside sessionMap should now be null:', sessionMap[sid])
-    console.log('(it was this object):', userObj)
-    res.sendStatus(200)
+    console.log('logging out from this cookie')
+    console.log(sid)
+    redis.del(sid, (err, response) => {
+        if (err){
+            console.log('problem logigng out')
+            res.sendStatus(400)
+        } else {
+            console.log('delete worked')
+            console.log('(we got this response):', response)
+            res.sendStatus(200)
+        }
+    })
 }
 const isLoggedInMiddleware = (req, res, next) => {
     const sid = req.cookies[cookieKey]
     if (!sid) {
         //unauthorized since no provided id
         console.log('invalid sid')
-        res.sendStatus(401)
+        res.sendStatus(400)
         return
     }
-    redis.hgetall(sid, function(err, userObj) {
-        console.log(sid, 'mapped to', userObj)
-        //so we can quickly get the authentication data when needed
-        //without having to provide refrences to the session map elsewhere
-        req.userObj = userObj
+    redis.hgetall(sid, (err, userObj) => {
+        if (err) {
+            console.log('Uh oh! Problem accessing on redis. Looks like an invalid sid cookie')
+            res.sendStatus(400)
+            return
+        } else if (!userObj){
+            console.log('uh oh! Couldnt find the user object on redis. Looks logged out?')
+            res.sendStatus(401)
+            return
+        } else {
+            console.log(sid, 'mapped to', userObj)
+            //so we can quickly get the authentication data when needed
+            //without having to provide refrences to the session map elsewhere
+            req.userObj = userObj
 
-        //So that changing password doesn't require re-parsing the cookies
-        req.sid = sid
+            //So that changing password doesn't require re-parsing the cookies
+            req.sid = sid
 
-        //(read up on how middleware works if this line confuses you)
-        next()
+            //(read up on how middleware works if this line confuses you)
+            next()
+        }
     })
 }
 
