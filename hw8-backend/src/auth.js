@@ -1,9 +1,8 @@
 const md5 = require('md5')
 const model = require('./model.js')
 const bodyParser = require('body-parser')
-// TODO - in next assignemnt we move the in-memory session id map to a redis
-// store (it should really be LRU)
-const sessionMap = { }
+const REDIS_URL = "redis://h:p58afdee5f98f2e9a6d89cb8f0f284a3b46ff8644bda0c55b4b9bddc6206e451b@ec2-34-206-56-30.compute-1.amazonaws.com:45719"
+const redis = require('redis').createClient(process.env.REDIS_URL || REDIS_URL)
 const cookieKey = 'sid';
 
 /**
@@ -24,7 +23,6 @@ const saltAndHashPassword = (salt, password) => md5(password + salt);
 const login = (req, res) => {
     console.log('Payload received', req.body)
     console.log('\n\n')
-    console.log('What is the current sid map?:', sessionMap)
     console.log('\n\n')
     const username = req.body.username;
     const password = req.body.password;
@@ -55,7 +53,10 @@ const login = (req, res) => {
             const randomStr = Math.random().toString()
             const sid = md5(dateStr + randomStr)
             console.log('our new session id is:', sid)
-            sessionMap[sid] = userObj
+            redis.hmset(sid, userObj)
+            redis.hgetall(sid, function(err, userObj) {
+                console.log(sid, 'mapped to ', userObj)
+            })
 
             //we'll be needign this cookie on all incoming requests to check if logged in   
             console.log('setting response cookie')
@@ -160,7 +161,7 @@ const register = (req, res) => {
         } else {
             console.log('Request was to register an lready existing user - not ok!')
             res.sendStatus(401) 
-            return
+            returningn
         }
     })
     .catch(err => {
@@ -172,38 +173,34 @@ const register = (req, res) => {
 
 //TODO - NOT WORKING YET! But we don't need it for this excercise
 const logout = (req, res) => {
-    res.sendStatus(400)
-    /*
-    const username = req.body.username;
-    if (!username)  {
-        res.sendStatus(400)
-        return
-    }
-    cookie = 0
-    if (isLoggedInMiddleware(cookie)){
-        //TODO      
-    }*/
-    return;
+    const sid = req.cookies[cookieKey]
+    const userObj = sessionMap[sid]
+    console.log('logging out this person:', userObj)
+    delete(sessionMap[sid])
+    console.log('the auth entry inside sessionMap should now be null:', sessionMap[sid])
+    console.log('(it was this object):', userObj)
+    res.sendStatus(200)
 }
 const isLoggedInMiddleware = (req, res, next) => {
     const sid = req.cookies[cookieKey]
-    if (!sid || !sessionMap[sid]) {
+    if (!sid) {
         //unauthorized since no provided id
         console.log('invalid sid')
-        return res.sendStatus(401)
+        res.sendStatus(401)
+        return
     }
-    const userObj = sessionMap[sid]
-    console.log('user auth entry is', userObj)
+    redis.hgetall(sid, function(err, userObj) {
+        console.log(sid, 'mapped to', userObj)
+        //so we can quickly get the authentication data when needed
+        //without having to provide refrences to the session map elsewhere
+        req.userObj = userObj
 
-    //so we can quickly get the authentication data when needed
-    //without having to provide refrences to the session map elsewhere
-    req.userObj = userObj
+        //So that changing password doesn't require re-parsing the cookies
+        req.sid = sid
 
-    //So that changing password doesn't require re-parsing the cookies
-    req.sid = sid
-
-    //(read up on how middleware works if this line confuses you)
-    next()
+        //(read up on how middleware works if this line confuses you)
+        next()
+    })
 }
 
 /**
