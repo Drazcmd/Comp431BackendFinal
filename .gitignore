@@ -40,3 +40,8 @@ bundle.js
 bundle.js.map
 node_modules
 npm-debug.log
+
+# These might have API 'secret info' in them - don't want them appearing on github
+# ... You know, I have the strangest feeling  (*cough cough*) this isn't exactly 
+# the best way to be storing said secrets either...
+.env.json

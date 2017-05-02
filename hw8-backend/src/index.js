@@ -4,23 +4,41 @@ const bodyParser = require('body-parser')
 
 // Get the port from the environment, i.e., Heroku sets it
 const port = process.env.PORT || 3000
-//Run database locally when doing testing
+
+//In production, environment (i.e. probably heroku) will be setting all the
+//process.env fields (either automaticalyl or because we configured it to do so)
 if (process.env.NODE_ENV !== "production") {
-    console.log('Currently not running in production!')
+    //However, you'll want to be able to run stuff locally when doing testing
+    //At such time, all the relevant process.env stuffs should be in .env.json
     //see https://www.npmjs.com/package/dotenv 
+    console.log('Currently not running in production! The following values should be null:')
     console.log('inital mongolab uri:', process.env.MONGOLAB_URI)
-    console.log('now importing .env.json...\n ')
+    console.log('inital redis uri:', process.env.REDIS_URI)
+    console.log('inital Google OAuth2 client id:', process.env.GOOGLE_CLIENT_ID)
+    console.log('inital Google OAuth2 client secret:', process.env.GOOGLE_CLIENT_SECRET)
+    console.log('inital callback URL:', process.env.CALLBACK_URL)
+    console.log('inital express session secret:', process.env.SESSION_SECRET)
+
+    console.log('now importing .env.json to set them...\n ')
     require('dot-env')
+    console.log('done importing .env.json\n')
+
     console.log('mongolab uri after the import:', process.env.MONGOLAB_URI)
+    console.log('redis uri after the import:', process.env.REDIS_URI)
+    console.log('Google OAuth2 client id after the import:', process.env.GOOGLE_CLIENT_ID)
+    console.log('Google OAuth2 client secret after the import - not telling :p ^-^')
+    console.log('callback URL after the import:', process.env.CALLBACK_URL)
+    console.log('express session secret after the import - not telliang :p :D')
 }
 
-//Since some of these end up importing db.js, we need to make
-//sure we don't import our src files till after importing .env.json
+//Since some of these end up using various things in process.env (or importing a
+//file that does, such as db.js), we need to MAKE CERTIAN we don't import our src
+//files till after importing .env.json (only if running locally, of course - when
+//in production such values should be set already in process.env to begin with)
 const auth = require('./auth')
 const articles = require('./articles')
 const profile = require('./profile.js')
 const following = require('./following.js')
-
 
 /**
  * This might not neccesarily be correct for all cases, I believe I wrote it
@@ -40,13 +58,18 @@ function myCorsMiddleware(req, res, next) {
     console.log('got a request!')
     next()
 }
+
 const app = express()
-//enables CORS if I did stuff correctly
+//The order of some of this stuff is VERY important - be careful about chaning!
+//(cors is essential for using with my frontend)
 app.use(myCorsMiddleware)
 //see https://www.npmjs.com/package/body-parser-json
 app.use(bodyParser.json())
 app.use(cookieParser())
-//gives us register, login, and logout
+
+//gives us register, login, and logout, in addition to 
+//setting relevant passport middleware. NOTE - because this
+//guy uses middleware, import it before any of the other source files
 auth.setup(app)
 //gives us GET '/' and get/post '/articles'
 articles.setup(app)

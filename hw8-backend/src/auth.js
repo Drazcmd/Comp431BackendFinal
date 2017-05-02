@@ -1,9 +1,41 @@
+const cookieKey = 'sid';
 const md5 = require('md5')
 const model = require('./model.js')
 const bodyParser = require('body-parser')
-const REDIS_URL = "redis://h:p58afdee5f98f2e9a6d89cb8f0f284a3b46ff8644bda0c55b4b9bddc6206e451b@ec2-34-206-56-30.compute-1.amazonaws.com:45719"
-const redis = require('redis').createClient(process.env.REDIS_URL || REDIS_URL)
-const cookieKey = 'sid';
+
+if (!process.env.REDIS_URL){
+    throw "Where is the redis url? Can't store our session data without it!"
+}
+const redis = require('redis').createClient(process.env.REDIS_URL)
+
+if (!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.CALLBACK_URL)){
+    throw "Where are my google api client ID, client Secret, and redirect link? Need them for the API!"
+}
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
+const CALLBACK_URL = process.env.CALLBACK_URL
+
+//see the google oauth2 section of http://passportjs.org/docs/oauth2-api
+const passport = require('passport')
+const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy
+passport.use(
+    new GoogleStrategy({
+        clientID: GOOGLE_CLIENT_ID,
+        clientSecret: GOOGLE_CLIENT_SECRET,
+        callbackURL: CALLBACK_URL,
+    }, (accessToken, refreshToken, profile, done) => {
+        //'profile' is the google profile - this function is the one the oauth section
+        //mentions that 'invoke[s] a callback with a user object'
+        User.findOrCreate({ googleId: profile.id }, function (err, user) {
+            //And this right here is said callback
+            console.log('this is where we give them a session cookie for being logged in with google I think!')
+            console.log('the google user object is:', user)
+            console.log('todooooo')
+            return done(err, user);
+        });
+    })
+);
+
 
 /**
  * Remember, never store the passwords themselves in the database!
@@ -83,6 +115,13 @@ const login = (req, res) => {
         res.sendStatus(400)
         return
     })
+}
+
+/**
+ * See http://passportjs.org/docs/google
+ */
+const googleLogin = (req, res) => {
+
 }
 
 /**
@@ -264,9 +303,33 @@ const changePassword = (req, res) => {
  */
 exports.isLoggedInMiddleware = isLoggedInMiddleware;
 exports.setup = (app => {
+    //NOTE HOW THESE TWO ARE MIDDLEWARE! To avoid issues, auth.js
+    //should be imported before all the other source files 
+    app.use(passport.initialize());
+    app.use(passport.session());
+
+    //get request here is a simple redirects - on our side they don't affect state
+    //nor take any additional information (all that happens on gogole's end)
+    app.get('/auth/google', passport.authenticate(
+        'google', { scope: ['https://www.googleapis.com/auth/plus.login'] }
+    ))
+    //passport.authenticate is the route middleware - note that this differs from
+    //the example in the docs. Whether it succeeds or fails, it just redirects
+    //back to the main page. Only difference is that if it succeeds, before redirecting 
+    //back it'll set a session cookie (at which point main page will let them in
+    //automatically since they'll have a valid sesion cookie and we check it after refresh)
+    app.get('/auth/google/callback', 
+        passport.authenticate('google', { failureRedirect: '/' }),
+        (req, res) => {
+            //this callback is the 'success' callback
+            console.log("\n\n\n\n\n\n\nTHIRD PARTY LOGIN !\n\n\n\n\n\n\n")
+            console.log('Wait a tick... what exactly can I build the session stuff from?')
+            console.log(req)
+            res.redirect('/');
+        }
+    )
     app.post('/login', login)
     app.post('/register', register)
     app.put('/logout', isLoggedInMiddleware, logout)
     app.put('/password', isLoggedInMiddleware, changePassword)
 })
-
