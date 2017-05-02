@@ -26,17 +26,32 @@ passport.use(
         callbackURL: CALLBACK_URL,
     }, (accessToken, refreshToken, profile, done) => {
         console.log('returned google profile is:', profile)
+        console.log('and the id is', profile.id)
         //'profile' is the google profile - this function is the one the oauth section
         //mentions that 'invoke[s] a callback with a user object'
-        model.User.findOrCreate({ googleId: profile.id }, function (err, user) {
+        model.User.find({ googleId: profile.id })
+        .then(response => {
             //And this right here is said callback
-            console.log('this is where we give them a session cookie for being logged in with google I think!')
-            console.log('the google user object is:', user)
-            console.log('todooooo')
-            return done(err, user);
-        });
+            console.log('the response is:', response)
+            if (response.length != 0){
+                //We already ahve them in our system 
+                //Simply give them their cookie
+                console.log('gotta give htem their cookie! TODO')
+            } else {
+                console.log('let us put them in our system!')
+                //googleRegister(profile)
+            }
+            done()
+            return
+        })
+        .catch(err => {
+            console.log('problem with google login!: ', err)
+            done()
+            return
+        })
+
     })
-);
+)
 
 
 /**
@@ -120,13 +135,6 @@ const login = (req, res) => {
 }
 
 /**
- * See http://passportjs.org/docs/google
- */
-const googleLogin = (req, res) => {
-
-}
-
-/**
  * The only tricky part is that date of birth might be null, and I've decided
  * to allow that (for now at least)
  */
@@ -150,6 +158,54 @@ const initializeProfile = (username, email, zipcode, dob) => {
         } 
     return profile
 }
+
+/**
+ * Puts them in the map with no salt or password
+ */
+const googleRegister = (googleProfile) => {
+    const username = googleProfile + "@GOOGLE"
+    const initializedProfile = initializeProfile(username, email, zipcode, dob)
+    console.log('If we end up making it, the requested profile will be this:', initializedProfile)
+
+    //we don't want to allow multiple users with the same username
+    model.User.find({username: username})
+    .then(response => {
+        //TODO - this print might be a security vuln if kept in production.
+        //might want to remove it before then
+        console.log('for requested username', username, 'database contained ', response)
+        //this had better be an empty array, otherwise the user already exists
+        if (response.length == 0) {
+            console.log('google registration can procede: user', username, 'does not already have an entry'); 
+            //Going by the instructions, now we have to add exactly two documents: a 'user'...
+            model.User({'username': username}).save()
+            .then(response => {
+                console.log('\nsuccessful auth-user object creation ', response)
+                //...and a profile
+                return model.Profile(initializedProfile).save()
+            })
+            .then(response => {
+                console.log('successful profile-info object creation', response)
+                const msg = {username: username, result: 'success'}
+                res.send(msg)
+            }).catch(err => {
+                console.log('registered failure. error:', err)
+                const msg = {username: username, result: 'failure'}
+                res.send(msg)
+            })
+        } else {
+            console.log('Request was to register an lready existing user - not ok!')
+            res.sendStatus(401) 
+            returningn
+        }
+    })
+    .catch(err => {
+        console.log('error on lookup of username?', err)
+        res.sendStatus(400) 
+        return
+    })
+}
+
+
 /**
  * Creates an authentication entry in the database for the registering user,
  * in addition to giving him/her some default profile information
@@ -321,13 +377,13 @@ exports.setup = (app => {
     //back it'll set a session cookie (at which point main page will let them in
     //automatically since they'll have a valid sesion cookie and we check it after refresh)
     app.get('/auth/google/callback', 
-        passport.authenticate('google', { failureRedirect: '/' }),
+        passport.authenticate('google', { failureRedirect: '/aba' }),
         (req, res) => {
             //this callback is the 'success' callback
             console.log("\n\n\n\n\n\n\nTHIRD PARTY LOGIN !\n\n\n\n\n\n\n")
             console.log('Wait a tick... what exactly can I build the session stuff from?')
             console.log(req)
-            res.redirect('/');
+            res.redirect('/alala');
         }
     )
     app.post('/login', login)
