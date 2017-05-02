@@ -8,12 +8,13 @@ if (!process.env.REDIS_URL){
 }
 const redis = require('redis').createClient(process.env.REDIS_URL)
 
-if (!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.CALLBACK_URL)){
-    throw "Where are my google api client ID, client Secret, and redirect link? Need them for the API!"
+if (!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)){
+    throw "Where are my google api client ID and client Secret? We need them for oauth2 with google!"
 }
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
-const CALLBACK_URL = process.env.CALLBACK_URL
+//TODO - how to get htis before starting the server?
+const CALLBACK_URL = "http://localhost:3000/auth/google/callback"
 
 //see the google oauth2 section of http://passportjs.org/docs/oauth2-api
 const passport = require('passport')
@@ -24,9 +25,10 @@ passport.use(
         clientSecret: GOOGLE_CLIENT_SECRET,
         callbackURL: CALLBACK_URL,
     }, (accessToken, refreshToken, profile, done) => {
+        console.log('returned google profile is:', profile)
         //'profile' is the google profile - this function is the one the oauth section
         //mentions that 'invoke[s] a callback with a user object'
-        User.findOrCreate({ googleId: profile.id }, function (err, user) {
+        model.User.findOrCreate({ googleId: profile.id }, function (err, user) {
             //And this right here is said callback
             console.log('this is where we give them a session cookie for being logged in with google I think!')
             console.log('the google user object is:', user)

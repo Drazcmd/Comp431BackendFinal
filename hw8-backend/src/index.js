@@ -16,8 +16,6 @@ if (process.env.NODE_ENV !== "production") {
     console.log('inital redis uri:', process.env.REDIS_URI)
     console.log('inital Google OAuth2 client id:', process.env.GOOGLE_CLIENT_ID)
     console.log('inital Google OAuth2 client secret:', process.env.GOOGLE_CLIENT_SECRET)
-    console.log('inital callback URL:', process.env.CALLBACK_URL)
-    console.log('inital express session secret:', process.env.SESSION_SECRET)
 
     console.log('now importing .env.json to set them...\n ')
     require('dot-env')
@@ -27,8 +25,6 @@ if (process.env.NODE_ENV !== "production") {
     console.log('redis uri after the import:', process.env.REDIS_URI)
     console.log('Google OAuth2 client id after the import:', process.env.GOOGLE_CLIENT_ID)
     console.log('Google OAuth2 client secret after the import - not telling :p ^-^')
-    console.log('callback URL after the import:', process.env.CALLBACK_URL)
-    console.log('express session secret after the import - not telliang :p :D')
 }
 
 //Since some of these end up using various things in process.env (or importing a
