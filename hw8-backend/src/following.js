@@ -116,6 +116,7 @@ const deleteFollowing = (req, res) => {
         res.sendStatus(400)
     })
 }
+exports.findFollowees = findFollowees
 exports.setup = function(app){
     app.get('/following/:user?', isLoggedInMiddleware, following)
     app.put('/following/:user?', isLoggedInMiddleware, putFollowing)

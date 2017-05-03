@@ -155,7 +155,7 @@ const login = (req, res) => {
                     res.sendStatus(401)
                     throw 'Problem accessing newly created sesion cookie in redis?'
                 }
-                console.log(sid, 'mapped to ', userObj)
+                console.log(sid, 'mapped to ', userObj.hash, userObj.salt, userObj.facebookIdHash, userObj.username)
             })
             //we'll be needign this cookie on all incoming requests to check if logged in   
             console.log('setting response cookie')
@@ -351,7 +351,7 @@ const isLoggedInMiddleware = (req, res, next) => {
             res.sendStatus(401)
             return
         } else {
-            console.log(sid, 'mapped to', userObj)
+            console.log(sid, 'mapped to this: ', userObj.username, userObj.hash, userObj.salt, userObj.facebookIdHash)
             //so we can quickly get the authentication data when needed
             //without having to provide refrences to the session map elsewhere
             req.userObj = userObj
@@ -413,7 +413,7 @@ const createFacebookCookie = (req, res) => {
             res.sendStatus(401)
             throw 'Problem accessing newly created sesion cookie in redis?'
         }
-        console.log(sid, 'mapped to ', userObj)
+        console.log(sid, 'mapped to this: ', userObj.username, userObj.hash, userObj.salt, userObj.facebookIdHash)
     })
     //we'll be needign this cookie on all incoming requests to check if logged in   
     console.log('setting response cookie')

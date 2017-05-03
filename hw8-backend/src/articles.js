@@ -4,7 +4,7 @@ const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
 const model = require('./model.js')
 const isLoggedInMiddleware = require('./auth').isLoggedInMiddleware
-
+const findFollowees = require('./following').findFollowees
 
 exports.setup = function(app){
     app.use(bodyParser.json())
@@ -86,25 +86,58 @@ const getArticles = (req, res) => {
         res.send({articles:[]})
     } else {
         //Now we know that either the id is a valid article id or doesn't exist at all,
-        //These are both likely to return articles - either return all the articles in the
-        //database, or a single article (if one with its id exists - otherwise none)
-        //The empty {} for the find will get all articles in the database
-        const databaseFilter = id && model.isPossibleId(id)
-            ? {'_id': id}
-            : {}
-        model.Article.find(databaseFilter)
-        .then(response => {
-            console.log('got these articles back:', response)
-            const returnedArticles = response.map(formatArticleForAPI)
-            console.log('Formatted for the client, looks like this:', returnedArticles)
-            res.send({articles: returnedArticles})
-        })
-        .catch(err => {
-            console.log('Problem with database query?:', err)
-            res.sendStatus(400)
-        })
+        //These are both likely to return articles - either a single article (if one with 
+        //its id exists - otherwise none) or the first ten articles articles posted by the 
+        //people the logged in user is following.
+        if (id && model.isPossibleId(id)){
+            const databaseFilter = {'_id': id}
+            model.Article.find(databaseFilter)
+            .then(response => {
+                console.log('got these articles back:', response)
+                const returnedArticles = response.map(formatArticleForAPI)
+                console.log('Formatted for the client, looks like this:', returnedArticles)
+                res.send({articles: returnedArticles})
+            })
+            .catch(err => {
+                console.log('Problem with database query?:', err)
+                res.sendStatus(400)
+            })
+        } else {
+            //Need to limit it to just documnts of followed users, so things
+            //will end up looking very very different syntactically and structurally
+            //(this is why I had to give up on a generic get articles function)
+            findFollowees(req.userObj.username)
+            .then(following => {
+                console.log('ok, found who we are following:', following)
+                const usersWanted = [...following, req.userObj.username]
+                console.log('now we want these peoples articles:', usersWanted)
+                const databaseFilter = {'username': {$in: usersWanted}}
+                //note that paginatino isn't required here, but we DO need to
+                //limit it to just the ten most recent
+                model.Profile.find(databaseFilter)
+                .populate({
+                    path: 'articles',
+                    options: { sort: {'created_at': -1}, limit: 10 }
+                })
+                .exec(function(err, articles) {
+                    console.log('\n\n\nalright, what articles did we find????', articles)
+                    //(not sure how to do a chained populate off a thenable without
+                    //doing two separate requests, so doing it the non-thenable way)
+                    if(err){
+                        console.log("Problem getting articles:", err)
+                        res.sendStatus(400)
+                    } else {
+                        console.log("Got articels!", articles)
+                        res.send({articles: [...articles]})
+                    }
+                })
+            })
+            .catch(err => {
+                console.log("problem with getting articles?", err)
+                res.sendStatus(400)
+            })
+        }
     }
-
 }
 
 const respondToPutArticles = (databaseResponse, res) => {
