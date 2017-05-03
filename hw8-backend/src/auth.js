@@ -418,7 +418,7 @@ const createFacebookCookie = (req, res) => {
     //we'll be needign this cookie on all incoming requests to check if logged in   
     console.log('setting response cookie')
     res.cookie(cookieKey, sid, {maxAge: 3600*1000, httpOnly: true})
-    res.send({ "Facebook Login success!": 'naviage back to the frontend'})
+    res.redirect("http://localhost:8080")
 }
 
 /*
