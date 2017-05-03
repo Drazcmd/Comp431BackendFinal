@@ -21,45 +21,80 @@ const CALLBACK_URL = "http://localhost:3000/auth/facebook/callback"
 //note that this is used for middleware inside index.js during setup!
 const passport = require('passport')
 passport.serializeUser(function(user, done) {
-    const userObj = user
-    console.log('save this in db:', userObj)
-    done(null, userObj.id)
+    const userObj = {}
+    //we need some sort of username in our system - if they have
+    //a 'username entry' use it, but probalby oyu'll just have
+    //to use their display name. The @Facebook specifies hwo they differ
+    //(since normal usernames my frontend sends can't have the @ symbol in them)
+    //note that this might be a security vulnrrability in the real world if someone
+    //creates an acconut with a username that has an @Facebook in it by sending
+    //a CURL or something
+    if (user.username) {
+        userObj.username = user.username + "@Facebook"
+    } else if (user.displayName){
+        userObj.username = user.displayName + "@Facebook"
+    } else {
+        userObj.username = "anon@Facebook"
+    }
+    //No guarantee the user will give us these! Or the dob (lahtough I believe
+    //Facbeook is validating that they're at least of age)
+    user.email? userObj.email = user.email : "missingemail@Facebook.notReal"
+    user.zipcode? userObj.zipcode = user.zipcode : "00000"
+    const profile = initializeProfile(userObj.username, userObj.email, userObj.zipcode)
+
+    //not for security purposes - just to ensure it's easy to look up with mongoose
+    const facebookIdHash = md5(user.id)
+    facebookAuth(profile, facebookIdHash)
+    .then(success => {
+        if (success) {
+            console.log('registered facbeook user')
+            done(null, facebookIdHash)
+        } else {
+            //delegate to the .catch...
+            throw("error with facebook auth")
+        }
+    })
+    .catch(err => {
+        console.log('problem somwhere...:', err)
+        done(err, null)
+    })
 })
+
 passport.deserializeUser(function(id, done) {
     console.log('get from the db', id)
-    const userObj = {_id: id, needThis:"needthis"}
-    console.log('fake for now', userObj)
-    done(null, userObj)
+    model.User.find({ facebookIdHash: id}).then(response => {
+        //And this right here is said callback
+        console.log('the response is:', response)
+        if (response.length != 0){
+            console.log('found the user')
+            //so, keep them in the session
+            done(null, response[0]) 
+        } else {
+            //delegate to the .catch to remove it from the session
+            throw ('could not find the user')
+        }
+    })
+    .catch(err => {
+        console.log('problem on lookup...:', err)
+        done(err, null)
+    })
 })
+
 const FacebookStrategy = require('passport-facebook').Strategy
 passport.use(
     new FacebookStrategy({
         clientID: FACEBOOK_CLIENT_ID,
         clientSecret: FACEBOOK_CLIENT_SECRET,
-        callbackURL: CALLBACK_URL,
+        callbackURL: CALLBACK_URL
     }, (accessToken, refreshToken, profile, done) => {
         console.log('returned facebook profile is:', profile)
         console.log('and the id is', profile.id)
         process.nextTick(function() {
             //'profile' is the facebook profile - this function is the one the oauth section
             //mentions that 'invoke[s] a callback with a user object'
-            return model.User.find({ facebookId: profile.id })
-            .then(response => {
-                //And this right here is said callback
-                console.log('the response is:', response)
-                if (response.length != 0){
-                    //We already ahve them in our system 
-                    //Simply give them their cookie
-                    console.log('gotta give htem their cookie! TODO')
-                } else {
-                    console.log('let us put them in our system!')
-                }
-                return done(null, profile)
-            })
-            .catch(err => {
-                console.log('problem with facebook login!: ', err)
-                return done(null, profile)
-            })
+            //i.e. what gets sent to 'serializeUser'
+            console.log('ok, sending profile to serializer:', profile)
+            return done(null, profile)
         })
     })
 )
@@ -173,13 +208,11 @@ const initializeProfile = (username, email, zipcode, dob) => {
 /**
  * Puts them in the map with no salt or password
  */
-const facebookRegister = (facebookProfile) => {
-    const username = facebookProfile + "@facebook"
-    const initializedProfile = initializeProfile(username, email, zipcode, dob)
-    console.log('If we end up making it, the requested profile will be this:', initializedProfile)
-
+const facebookAuth = (profile, facebookIdHash) => {
+    console.log('If we end up making it, the requested profile will be this:', profile)
+    const username = profile.username
     //we don't want to allow multiple users with the same username
-    model.User.find({username: username})
+    return model.User.find({'username': username})
     .then(response => {
         //TODO - this print might be a security vuln if kept in production.
         //might want to remove it before then
@@ -188,31 +221,34 @@ const facebookRegister = (facebookProfile) => {
         if (response.length == 0) {
             console.log('facebook registration can procede: user', username, 'does not already have an entry'); 
             //Going by the instructions, now we have to add exactly two documents: a 'user'...
-            model.User({'username': username}).save()
+            return model.User({'username': username, 'facebookIdHash': facebookIdHash}).save()
             .then(response => {
                 console.log('\nsuccessful auth-user object creation ', response)
                 //...and a profile
-                return model.Profile(initializedProfile).save()
+                return model.Profile(profile).save()
             })
             .then(response => {
                 console.log('successful profile-info object creation', response)
-                const msg = {username: username, result: 'success'}
-                res.send(msg)
+                return true
             }).catch(err => {
                 console.log('registered failure. error:', err)
-                const msg = {username: username, result: 'failure'}
-                res.send(msg)
+                return false
             })
+        } else if (response.length == 1) {
+            if (response[0].facebookIdHash == facebookIdHash){
+                console.log('User already has an entry - just gotta login')
+                return true
+            } else {
+                console.log('yikes! User already ahs an entry, with a different id...')
+                return false
+            }
         } else {
-            console.log('Request was to register an lready existing user - not ok!')
-            res.sendStatus(401) 
-            returningn
+            console.log('user has more than one entry in the db?')
         }
     })
     .catch(err => {
         console.log('error on lookup of username?', err)
-        res.sendStatus(400) 
-        return
+        return false
     })
 }
 
@@ -273,7 +309,6 @@ const register = (req, res) => {
         } else {
             console.log('Request was to register an lready existing user - not ok!')
             res.sendStatus(401) 
-            returningn
         }
     })
     .catch(err => {

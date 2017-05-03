@@ -6,7 +6,8 @@ mongoose.Promise = global.Promise;
 
 //see https://www.clear.rice.edu/comp431/data/database.html
 const userSchema = new mongoose.Schema({
-	username: String, salt: String, hash: String
+	username: String, salt: String, hash: String,
+	facebookIdHash: String
 })
 const profileSchema = new mongoose.Schema({
 	username: String, 
