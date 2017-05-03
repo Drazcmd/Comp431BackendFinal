@@ -14,18 +14,18 @@ if (!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)){
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
 //TODO - how to get htis before starting the server?
-const CALLBACK_URL = "http://localhost:3000/auth/google/callback"
+const CALLBACK_URL = "http://localhost:3000/auth/facebook/callback"
 
 //see the google oauth2 section of http://passportjs.org/docs/oauth2-api
 const passport = require('passport')
-const GoogleStrategy = require('passport-google-oauth').OAuth2Strategy
+const FacebookStrategy = require('passport-facebook').Strategy
 passport.use(
-    new GoogleStrategy({
-        clientID: GOOGLE_CLIENT_ID,
-        clientSecret: GOOGLE_CLIENT_SECRET,
+    new FacebookStrategy({
+        clientID: "",
+        clientSecret: "",
         callbackURL: CALLBACK_URL,
     }, (accessToken, refreshToken, profile, done) => {
-        console.log('returned google profile is:', profile)
+        console.log('returned facebook profile is:', profile)
         console.log('and the id is', profile.id)
         //'profile' is the google profile - this function is the one the oauth section
         //mentions that 'invoke[s] a callback with a user object'
@@ -41,12 +41,12 @@ passport.use(
                 console.log('let us put them in our system!')
                 //googleRegister(profile)
             }
-            done()
+            done(null, 0)
             return
         })
         .catch(err => {
             console.log('problem with google login!: ', err)
-            done()
+            done(null, err)
             return
         })
 
@@ -368,24 +368,22 @@ exports.setup = (app => {
 
     //get request here is a simple redirects - on our side they don't affect state
     //nor take any additional information (all that happens on gogole's end)
-    app.get('/auth/google', passport.authenticate(
-        'google', { scope: ['https://www.googleapis.com/auth/plus.login'] }
-    ))
+    app.get('/auth/facebook', passport.authenticate('facebook'))
     //passport.authenticate is the route middleware - note that this differs from
     //the example in the docs. Whether it succeeds or fails, it just redirects
     //back to the main page. Only difference is that if it succeeds, before redirecting 
     //back it'll set a session cookie (at which point main page will let them in
     //automatically since they'll have a valid sesion cookie and we check it after refresh)
-    app.get('/auth/google/callback', 
-        passport.authenticate('google', { failureRedirect: '/aba' }),
-        (req, res) => {
-            //this callback is the 'success' callback
-            console.log("\n\n\n\n\n\n\nTHIRD PARTY LOGIN !\n\n\n\n\n\n\n")
-            console.log('Wait a tick... what exactly can I build the session stuff from?')
-            console.log(req)
-            res.redirect('/alala');
-        }
-    )
+    app.get('/auth/facebook/callback', passport.authenticate('facebook', {
+        successRedirect:'/success',
+        failureRedirect: '/failure' 
+    }))
+    app.get('/success', (req, res) => {
+        res.send({ "Facebook Login Suceeded!": 'Close this window to login automatically'})
+    })
+    app.get('/failure', (req, res) => {
+        res.send({ "Facebook Login Failed!": 'Close this page and try again'})
+    })
     app.post('/login', login)
     app.post('/register', register)
     app.put('/logout', isLoggedInMiddleware, logout)
