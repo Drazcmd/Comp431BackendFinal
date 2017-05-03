@@ -105,31 +105,23 @@ const getArticles = (req, res) => {
         } else {
             //Need to limit it to just documnts of followed users, so things
             //will end up looking very very different syntactically and structurally
-            //(this is why I had to give up on a generic get articles function)
+            //(this is why I had to give up on a generic get artilces function)
             findFollowees(req.userObj.username)
             .then(following => {
-                console.log('ok, found who we are following:', following)
                 const usersWanted = [...following, req.userObj.username]
-                console.log('now we want these peoples articles:', usersWanted)
-                const databaseFilter = {'username': {$in: usersWanted}}
+                const databaseFilter = {'author': {$in: usersWanted}}
                 //note that paginatino isn't required here, but we DO need to
                 //limit it to just the ten most recent
-                model.Profile.find(databaseFilter)
-                .populate({
-                    path: 'articles',
-                    options: { sort: {'created_at': -1}, limit: 10 }
+                model.Article.find(databaseFilter, null,  { sort: {'created_at': -1}, limit: 10 })
+                .then(response => {
+                    console.log('got these articles back:', response)
+                    const returnedArticles = response.map(formatArticleForAPI)
+                    console.log('Formatted for the client, looks like this:', returnedArticles)
+                    res.send({articles: returnedArticles})
                 })
-                .exec(function(err, articles) {
-                    console.log('\n\n\nalright, what articles did we find????', articles)
-                    //(not sure how to do a chained populate off a thenable without
-                    //doing two separate requests, so doing it the non-thenable way)
-                    if(err){
-                        console.log("Problem getting articles:", err)
-                        res.sendStatus(400)
-                    } else {
-                        console.log("Got articels!", articles)
-                        res.send({articles: [...articles]})
-                    }
+                .catch(err => {
+                    console.log('Problem with database query (lots of artticles)?:', err)
+                    res.sendStatus(400)
                 })
             })
             .catch(err => {
