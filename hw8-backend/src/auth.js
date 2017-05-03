@@ -8,48 +8,59 @@ if (!process.env.REDIS_URL){
 }
 const redis = require('redis').createClient(process.env.REDIS_URL)
 
-if (!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)){
-    throw "Where are my google api client ID and client Secret? We need them for oauth2 with google!"
+if (!(process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET)){
+    throw "Where are my facebook api client ID and client Secret? We need them for oauth2 with facebook!"
 }
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET
+const FACEBOOK_CLIENT_ID = process.env.FACEBOOK_CLIENT_ID
+const FACEBOOK_CLIENT_SECRET = process.env.FACEBOOK_CLIENT_SECRET
 //TODO - how to get htis before starting the server?
 const CALLBACK_URL = "http://localhost:3000/auth/facebook/callback"
 
-//see the google oauth2 section of http://passportjs.org/docs/oauth2-api
+//see the facebook oauth2 section of http://passportjs.org/docs/oauth2-api,
+//as well as the comp431 oauth2 lecture slides
+//note that this is used for middleware inside index.js during setup!
 const passport = require('passport')
+passport.serializeUser(function(user, done) {
+    const userObj = user
+    console.log('save this in db:', userObj)
+    done(null, userObj.id)
+})
+passport.deserializeUser(function(id, done) {
+    console.log('get from the db', id)
+    const userObj = {_id: id, needThis:"needthis"}
+    console.log('fake for now', userObj)
+    done(null, userObj)
+})
 const FacebookStrategy = require('passport-facebook').Strategy
 passport.use(
     new FacebookStrategy({
-        clientID: "",
-        clientSecret: "",
+        clientID: FACEBOOK_CLIENT_ID,
+        clientSecret: FACEBOOK_CLIENT_SECRET,
         callbackURL: CALLBACK_URL,
     }, (accessToken, refreshToken, profile, done) => {
         console.log('returned facebook profile is:', profile)
         console.log('and the id is', profile.id)
-        //'profile' is the google profile - this function is the one the oauth section
-        //mentions that 'invoke[s] a callback with a user object'
-        model.User.find({ googleId: profile.id })
-        .then(response => {
-            //And this right here is said callback
-            console.log('the response is:', response)
-            if (response.length != 0){
-                //We already ahve them in our system 
-                //Simply give them their cookie
-                console.log('gotta give htem their cookie! TODO')
-            } else {
-                console.log('let us put them in our system!')
-                //googleRegister(profile)
-            }
-            done(null, 0)
-            return
+        process.nextTick(function() {
+            //'profile' is the facebook profile - this function is the one the oauth section
+            //mentions that 'invoke[s] a callback with a user object'
+            return model.User.find({ facebookId: profile.id })
+            .then(response => {
+                //And this right here is said callback
+                console.log('the response is:', response)
+                if (response.length != 0){
+                    //We already ahve them in our system 
+                    //Simply give them their cookie
+                    console.log('gotta give htem their cookie! TODO')
+                } else {
+                    console.log('let us put them in our system!')
+                }
+                return done(null, profile)
+            })
+            .catch(err => {
+                console.log('problem with facebook login!: ', err)
+                return done(null, profile)
+            })
         })
-        .catch(err => {
-            console.log('problem with google login!: ', err)
-            done(null, err)
-            return
-        })
-
     })
 )
 
@@ -162,8 +173,8 @@ const initializeProfile = (username, email, zipcode, dob) => {
 /**
  * Puts them in the map with no salt or password
  */
-const googleRegister = (googleProfile) => {
-    const username = googleProfile + "@GOOGLE"
+const facebookRegister = (facebookProfile) => {
+    const username = facebookProfile + "@facebook"
     const initializedProfile = initializeProfile(username, email, zipcode, dob)
     console.log('If we end up making it, the requested profile will be this:', initializedProfile)
 
@@ -175,7 +186,7 @@ const googleRegister = (googleProfile) => {
         console.log('for requested username', username, 'database contained ', response)
         //this had better be an empty array, otherwise the user already exists
         if (response.length == 0) {
-            console.log('google registration can procede: user', username, 'does not already have an entry'); 
+            console.log('facebook registration can procede: user', username, 'does not already have an entry'); 
             //Going by the instructions, now we have to add exactly two documents: a 'user'...
             model.User({'username': username}).save()
             .then(response => {
@@ -360,6 +371,7 @@ const changePassword = (req, res) => {
  * like the standard middleware... but it is close
  */
 exports.isLoggedInMiddleware = isLoggedInMiddleware;
+exports.passport = passport
 exports.setup = (app => {
     //NOTE HOW THESE TWO ARE MIDDLEWARE! To avoid issues, auth.js
     //should be imported before all the other source files 
@@ -368,20 +380,20 @@ exports.setup = (app => {
 
     //get request here is a simple redirects - on our side they don't affect state
     //nor take any additional information (all that happens on gogole's end)
-    app.get('/auth/facebook', passport.authenticate('facebook'))
+    app.get('/auth/facebook/login', passport.authenticate('facebook', { scope: 'email'}))
     //passport.authenticate is the route middleware - note that this differs from
     //the example in the docs. Whether it succeeds or fails, it just redirects
     //back to the main page. Only difference is that if it succeeds, before redirecting 
     //back it'll set a session cookie (at which point main page will let them in
     //automatically since they'll have a valid sesion cookie and we check it after refresh)
     app.get('/auth/facebook/callback', passport.authenticate('facebook', {
-        successRedirect:'/success',
-        failureRedirect: '/failure' 
+        successRedirect:'/auth/facebook/success',
+        failureRedirect: '/auth/facbeook/failure' 
     }))
-    app.get('/success', (req, res) => {
+    app.get('/auth/facebook/success', (req, res) => {
         res.send({ "Facebook Login Suceeded!": 'Close this window to login automatically'})
     })
-    app.get('/failure', (req, res) => {
+    app.get('/auth/facebook/failure', (req, res) => {
         res.send({ "Facebook Login Failed!": 'Close this page and try again'})
     })
     app.post('/login', login)

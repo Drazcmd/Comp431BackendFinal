@@ -1,4 +1,5 @@
 const express = require('express')
+const session = require('express-session')
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
 
@@ -59,6 +60,10 @@ const app = express()
 //The order of some of this stuff is VERY important - be careful about chaning!
 //(cors is essential for using with my frontend)
 app.use(myCorsMiddleware)
+app.use(session({ secret: 'thisisMysecrethahahahahabutseriouslychangeforproduction'}))
+app.use(auth.passport.initialize())
+app.use(auth.passport.session())
+
 //see https://www.npmjs.com/package/body-parser-json
 app.use(bodyParser.json())
 app.use(cookieParser())
