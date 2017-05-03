@@ -400,6 +400,27 @@ const changePassword = (req, res) => {
     }
 }
 
+const createFacebookCookie = (req, res) => {
+    console.log('alright! successful facebook login!', req) 
+    const dateStr = new Date().getTime().toString()
+    const randomStr = Math.random().toString()
+    const sid = md5(dateStr + randomStr)
+    console.log('our new session id is:', sid)
+    redis.hmset(sid, req.user)
+    redis.hgetall(sid, (err, userObj) => {
+        if (err) {
+            console.log('Uh oh! Problem creating session cookie')
+            res.sendStatus(401)
+            throw 'Problem accessing newly created sesion cookie in redis?'
+        }
+        console.log(sid, 'mapped to ', userObj)
+    })
+    //we'll be needign this cookie on all incoming requests to check if logged in   
+    console.log('setting response cookie')
+    res.cookie(cookieKey, sid, {maxAge: 3600*1000, httpOnly: true})
+    res.send({ "Facebook Login success!": 'naviage back to the frontend'})
+}
+
 /*
  * We'll be using this guy basically everywehre except for
  * the login and register functions. So it can't quite apply to everything
@@ -425,11 +446,9 @@ exports.setup = (app => {
         successRedirect:'/auth/facebook/success',
         failureRedirect: '/auth/facbeook/failure' 
     }))
-    app.get('/auth/facebook/success', (req, res) => {
-        res.send({ "Facebook Login Suceeded!": 'Close this window to login automatically'})
-    })
+    app.get('/auth/facebook/success', createFacebookCookie)
     app.get('/auth/facebook/failure', (req, res) => {
-        res.send({ "Facebook Login Failed!": 'Close this page and try again'})
+        res.send({ "Facebook Login Failed!": 'navigate back and try again'})
     })
     app.post('/login', login)
     app.post('/register', register)
