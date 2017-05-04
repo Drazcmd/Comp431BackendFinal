@@ -15,7 +15,7 @@ exports.setup = function(app){
 
 //Next week we'll need to account for images as well
 const formatArticleForAPI = (dbArticle) => ({
-    id: dbArticle._id,
+    _id: dbArticle._id,
     author: dbArticle.author,
     text: dbArticle.text,
     date: dbArticle.createdAt,
@@ -93,7 +93,7 @@ const getArticles = (req, res) => {
             const databaseFilter = {'_id': id}
             model.Article.find(databaseFilter)
             .then(response => {
-                console.log('got these articles back:', response)
+                console.log('got this article back:', response)
                 const returnedArticles = response.map(formatArticleForAPI)
                 console.log('Formatted for the client, looks like this:', returnedArticles)
                 res.send({articles: returnedArticles})
@@ -112,7 +112,7 @@ const getArticles = (req, res) => {
                 const databaseFilter = {'author': {$in: usersWanted}}
                 //note that paginatino isn't required here, but we DO need to
                 //limit it to just the ten most recent
-                model.Article.find(databaseFilter, null,  { sort: {'created_at': -1}, limit: 10 })
+                model.Article.find(databaseFilter, null,  { sort: {'createdAt': -1}, limit: 10 })
                 .then(response => {
                     console.log('got these articles back:', response)
                     const returnedArticles = response.map(formatArticleForAPI)
