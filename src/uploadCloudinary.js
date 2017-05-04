@@ -22,6 +22,11 @@ const doUpload = (publicId, req, res, next) => {
 
 	// we create a passthrough stream to pipe the buffer
 	// to the uploadStream function for cloudinary.
+	if (!req.file){
+		//in this case, it's an image-less article - nothing we can do!
+		next()
+		return
+	}
 	const s = new stream.PassThrough()
 	s.end(req.file.buffer)
 	s.pipe(uploadStream)

@@ -4,17 +4,25 @@ const bodyParser = require('body-parser')
 const mongoose = require('mongoose')
 const model = require('./model.js')
 const isLoggedInMiddleware = require('./auth').isLoggedInMiddleware
+const uploadImage = require('./uploadCloudinary')
 const findFollowees = require('./following').findFollowees
 
 exports.setup = function(app){
     app.use(bodyParser.json())
     app.get('/articles/:id?', isLoggedInMiddleware, getArticles)
-    app.post('/article', isLoggedInMiddleware, postArticle)
+    app.post('/article', isLoggedInMiddleware, uploadImage('image'), postArticle)
     app.put('/articles/:id', isLoggedInMiddleware, putArticles)
 }
 
 //Next week we'll need to account for images as well
-const formatArticleForAPI = (dbArticle) => ({
+const formatArticleForAPI = (dbArticle) => dbArticle.img ? ({
+    _id: dbArticle._id,
+    img: dbArticle.img,
+    author: dbArticle.author,
+    text: dbArticle.text,
+    date: dbArticle.createdAt,
+    comments: dbArticle.comments.map(comment => formatCommentForAPI(comment))
+}) : ({
     _id: dbArticle._id,
     author: dbArticle.author,
     text: dbArticle.text,
@@ -42,7 +50,15 @@ const postArticle = (req, res) => {
         res.sendStatus(400)
         return
     }
-    const newArticle = {
+    console.log("is there an image????:", req.fileurl, req.body.image)
+    const newArticle = req.fileurl 
+    ? {
+        author:req.userObj.username,
+        text:req.body.text,
+        img:req.fileurl,
+        comments: []
+    } 
+    : {
         author:req.userObj.username,
         text:req.body.text,
         comments: []
