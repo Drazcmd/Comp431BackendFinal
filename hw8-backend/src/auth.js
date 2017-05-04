@@ -8,13 +8,14 @@ if (!process.env.REDIS_URL){
 }
 const redis = require('redis').createClient(process.env.REDIS_URL)
 
-if (!(process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET)){
+if (!(process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET &&
+    process.env.REDIRECT_URL && process.env.CALLBACK_URL)){
     throw "Where are my facebook api client ID and client Secret? We need them for oauth2 with facebook!"
 }
 const FACEBOOK_CLIENT_ID = process.env.FACEBOOK_CLIENT_ID
 const FACEBOOK_CLIENT_SECRET = process.env.FACEBOOK_CLIENT_SECRET
-//TODO - how to get htis before starting the server?
-const CALLBACK_URL = "http://localhost:3000/auth/facebook/callback"
+const REDIRECT_URL = process.env.REDIRECT_URL 
+const CALLBACK_URL = process.env.CALLBACK_URL
 
 //see the facebook oauth2 section of http://passportjs.org/docs/oauth2-api,
 //as well as the comp431 oauth2 lecture slides
@@ -418,7 +419,7 @@ const createFacebookCookie = (req, res) => {
     //we'll be needign this cookie on all incoming requests to check if logged in   
     console.log('setting response cookie')
     res.cookie(cookieKey, sid, {maxAge: 3600*1000, httpOnly: true})
-    res.redirect("http://localhost:8080")
+    res.redirect(REDIRECT_URL)
 }
 
 /*
