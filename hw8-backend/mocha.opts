@@ -1,4 +1,0 @@
---recursive
---colors
---timeout 10000
---reporter xunit-file
