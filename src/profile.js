@@ -1,5 +1,6 @@
 const model = require('./model.js')
 const isLoggedInMiddleware = require('./auth').isLoggedInMiddleware
+const uploadImage = require('./uploadCloudinary')
 exports.setup = function(app){
     //note this is the only one with :users rather than :user
     app.get('/headlines/:users?', isLoggedInMiddleware, headlines)
@@ -12,7 +13,7 @@ exports.setup = function(app){
     app.put('/zipcode', isLoggedInMiddleware, putZipcode)
 
     app.get('/avatars/:user?', isLoggedInMiddleware, avatars)
-    app.put('/avatar', isLoggedInMiddleware, uploadAvatar)
+    app.put('/avatar', isLoggedInMiddleware, uploadImage('avatar'), uploadAvatar)
 
     app.get('/dob', isLoggedInMiddleware, dob)
 }
@@ -152,7 +153,7 @@ const setProfileField = (res, username, fieldKey, newData) => {
 
         res.send(responseToClient)
     }).catch(err => {
-        console.log('problem with updating password:', err)
+        console.log('problem with updating profile field:', err)
         res.sendStatus(400)
     })
 }
@@ -211,10 +212,23 @@ const avatars  = (req, res) => {
     })
 }
 
-//This guys is the only endpoint we're allowed to stub for this assignment!
+//no longer stubbed - now we're using cloudinary!
 const uploadAvatar = (req, res) => {
-    res.send({
-        username: req.userObj.username, 
-        avatar: 'http://random-ize.com/lorem-ipsum-generators/lorem-ipsum/lorem-ipsum.jpg'
+    //cloudinary added in req.fileurl = result.url and req.fileid = result.public_id
+    //remember, just like all the other ones we first have to save the url in the 
+    //profile data in the database (since otherwise it won't be there for any actual 
+    //GET requests!). That being said, the safety was already checked up in the middleware,
+    //so we know that the request had proper authorization and an image that got processed
+    const userObj = req.userObj
+    model.Profile.findOneAndUpdate(
+        {'username': userObj.username}, {'picture': req.fileurl}, {'new':true}
+    ).then(responseFromDatabase => {
+        console.log('response to the avatar update', responseFromDatabase)
+        const username = responseFromDatabase.username
+        const avatarUrl = responseFromDatabase.picture
+        res.send({'username': username, 'avatar': avatarUrl})
+    }).catch(err => {
+        console.log('problem with updating avatar', err)
+        res.sendStatus(400)
     })
 }
